@@ -3,10 +3,11 @@ using Atc.Rest.Client.Authentication;
 using Atc.Rest.Client.Builder;
 using Atc.Rest.Client.Options;
 using Atc.Rest.Client.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class AtcRestClientServiceCollectionExtensions
+    public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddAtcRestClient<TOptions>(
             this IServiceCollection services,
@@ -34,7 +35,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             // Register utilities
             services.AddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-            services.AddSingleton<IContractSerializer, ContractSerializer>();
+            services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
 
             return services;
         }
