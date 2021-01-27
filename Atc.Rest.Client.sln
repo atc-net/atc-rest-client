@@ -7,6 +7,33 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atc.Rest.Client", "src\Atc.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atc.Rest.Client.Tests", "test\Atc.Rest.Client.Tests\Atc.Rest.Client.Tests.csproj", "{2286E363-C6E4-41AB-9A03-FC8C4C8FEB79}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".files", ".files", "{B301C360-29E2-4F7B-93DA-58F8EBF1C822}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		version.json = version.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".text", ".text", "{C17073B2-67F2-4DFD-A077-23F6A5C79F7C}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F93C17A-E567-4E32-AE28-5AF20CBC7A2B}"
+	ProjectSection(SolutionItems) = preProject
+		src\.editorconfig = src\.editorconfig
+		src\directory.build.props = src\directory.build.props
+		src\directory.build.targets = src\directory.build.targets
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D98D5EEC-459E-40AF-8C0F-92F03BF084C4}"
+	ProjectSection(SolutionItems) = preProject
+		test\.editorconfig = test\.editorconfig
+		test\directory.build.props = test\directory.build.props
+		test\directory.build.targets = test\directory.build.targets
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,6 +51,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{15A96F3F-4F3D-471D-885F-8C817EE0799E} = {6F93C17A-E567-4E32-AE28-5AF20CBC7A2B}
+		{2286E363-C6E4-41AB-9A03-FC8C4C8FEB79} = {D98D5EEC-459E-40AF-8C0F-92F03BF084C4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7A92D7EC-F444-456B-A86C-D6683E016C35}

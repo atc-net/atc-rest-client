@@ -20,7 +20,11 @@ namespace Atc.Rest.Client.Authentication
             }
 
             credential = options.Credential;
-            context = new TokenRequestContext(new string[] { options.IdentityScope });
+
+            // !BANG added to make nullable analyzer happy, since .netstandard2
+            // doesn't include annotations in IsNullOrWhiteSpace that tells the analyzer
+            // that options.IdentityScope cannot be null if it returns true.
+            context = new TokenRequestContext(new string[] { options.IdentityScope! });
         }
 
         public async Task<AuthenticationHeaderValue> GetTokenAsync(CancellationToken cancellationToken)
