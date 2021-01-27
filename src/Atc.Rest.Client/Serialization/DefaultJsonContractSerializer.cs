@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Atc.Rest.Client.Serialization
 {
-    public class ContractSerializer : IContractSerializer
+    public class DefaultJsonContractSerializer : IContractSerializer
     {
         private static readonly JsonSerializerOptions DefaultOptions = new JsonSerializerOptions
         {
@@ -19,7 +19,7 @@ namespace Atc.Rest.Client.Serialization
 
         private readonly JsonSerializerOptions options;
 
-        public ContractSerializer(JsonSerializerOptions? options = default)
+        public DefaultJsonContractSerializer(JsonSerializerOptions? options = default)
         {
             this.options = options ?? DefaultOptions;
         }
