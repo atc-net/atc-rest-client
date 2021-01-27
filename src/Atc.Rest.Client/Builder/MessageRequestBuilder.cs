@@ -8,7 +8,7 @@ using Atc.Rest.Client.Serialization;
 
 namespace Atc.Rest.Client.Builder
 {
-    public class MessageRequestBuilder : IMessageRequestBuilder
+    internal class MessageRequestBuilder : IMessageRequestBuilder
     {
         private readonly string template;
         private readonly IContractSerializer serializer;

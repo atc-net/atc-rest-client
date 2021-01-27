@@ -3,7 +3,7 @@ using Atc.Rest.Client.Serialization;
 
 namespace Atc.Rest.Client.Builder
 {
-    public class HttpMessageFactory : IHttpMessageFactory
+    internal class HttpMessageFactory : IHttpMessageFactory
     {
         private readonly IContractSerializer serializer;
 
@@ -12,8 +12,8 @@ namespace Atc.Rest.Client.Builder
             this.serializer = serializer;
         }
 
-        public IMessageRequestBuilder FromTemplate(string template)
-            => new MessageRequestBuilder(template, serializer);
+        public IMessageRequestBuilder FromTemplate(string pathTemplate)
+            => new MessageRequestBuilder(pathTemplate, serializer);
 
         public IMessageResponseBuilder FromResponse(HttpResponseMessage? response)
             => new MessageResponseBuilder(response, serializer);
