@@ -1,0 +1,42 @@
+using System.Collections.Generic;
+using System.Net;
+
+namespace Atc.Rest.Client
+{
+    public class EndpointResponse
+    {
+        public EndpointResponse(EndpointResponse response)
+            : this(
+                  response?.IsSuccess ?? throw new System.ArgumentNullException(nameof(response)),
+                  response.StatusCode,
+                  response.Content,
+                  response.ContentObject,
+                  response.Headers)
+        {
+        }
+
+        public EndpointResponse(
+            bool isSuccess,
+            HttpStatusCode statusCode,
+            string content,
+            object? contentObject,
+            IReadOnlyDictionary<string, IEnumerable<string>> headers)
+        {
+            IsSuccess = isSuccess;
+            StatusCode = statusCode;
+            Content = content;
+            ContentObject = contentObject;
+            Headers = headers;
+        }
+
+        public bool IsSuccess { get; }
+
+        public HttpStatusCode StatusCode { get; }
+
+        public string Content { get; }
+
+        public object? ContentObject { get; }
+
+        public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
+    }
+}
