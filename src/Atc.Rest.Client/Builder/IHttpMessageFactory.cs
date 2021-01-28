@@ -16,8 +16,8 @@ namespace Atc.Rest.Client.Builder
         /// <paramref name="pathTemplate"/> as the request URI.
         /// </summary>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="pathTemplate"/> is null.</exception>
-        /// <param name="pathTemplate">The relative URI to request. Can contain tokens values,
-        /// that will be with real values pass to the <see cref="IMessageRequestBuilder.WithPathParameter(string, string)"/>
+        /// <param name="pathTemplate">The relative URI to request. Can contain tokens,
+        /// that will be replaced with real values pass to the <see cref="IMessageRequestBuilder.WithPathParameter(string, string)"/>
         /// method.</param>
         /// <returns>A new <see cref="IMessageRequestBuilder"/>.</returns>
         IMessageRequestBuilder FromTemplate(string pathTemplate);
