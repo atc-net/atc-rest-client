@@ -134,7 +134,7 @@ namespace Atc.Rest.Client.Tests.Builder
         }
 
         [Fact]
-        public void WithBody_Throws_If_Parmeter_Is_Null()
+        public void WithBody_Throws_If_Parameter_Is_Null()
         {
             var sut = CreateSut();
 
