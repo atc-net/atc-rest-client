@@ -8,7 +8,7 @@ using Atc.Rest.Client.Serialization;
 
 namespace Atc.Rest.Client.Builder
 {
-    public class MessageRequestBuilder : IMessageRequestBuilder
+    internal class MessageRequestBuilder : IMessageRequestBuilder
     {
         private readonly string template;
         private readonly IContractSerializer serializer;
@@ -16,10 +16,10 @@ namespace Atc.Rest.Client.Builder
         private readonly Dictionary<string, string> queryMapper;
         private string content = string.Empty;
 
-        public MessageRequestBuilder(string template, IContractSerializer serializer)
+        public MessageRequestBuilder(string pathTemplate, IContractSerializer serializer)
         {
-            this.template = template;
-            this.serializer = serializer;
+            this.template = pathTemplate ?? throw new ArgumentNullException(nameof(pathTemplate));
+            this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             pathMapper = new Dictionary<string, string>(StringComparer.Ordinal);
             queryMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         }
@@ -66,11 +66,16 @@ namespace Atc.Rest.Client.Builder
             return this;
         }
 
+        public IMessageRequestBuilder WithPathParameter<T>(string name, T value)
+            where T : struct
+            => WithPathParameter(name, value.ToString());
+
         public IMessageRequestBuilder WithQueryParameter(string name, string? value)
         {
             if (!string.IsNullOrEmpty(value))
             {
-                queryMapper[name] = value;
+                // BANG added because nullable analyzer doesn't understand IsNullOrEmpty in .netstandard2.0
+                queryMapper[name] = value!;
             }
 
             return this;

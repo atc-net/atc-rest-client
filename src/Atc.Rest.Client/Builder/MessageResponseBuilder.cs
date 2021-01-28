@@ -10,7 +10,7 @@ using Atc.Rest.Client.Serialization;
 
 namespace Atc.Rest.Client.Builder
 {
-    public class MessageResponseBuilder : IMessageResponseBuilder
+    internal class MessageResponseBuilder : IMessageResponseBuilder
     {
         [SuppressMessage("StyleCop.CSharp.SpacingRules", "SA1000:Keywords should be spaced correctly", Justification = "False positive. new() syntax requires it.")]
         private static readonly EndpointResponse EmptyResponse
