@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -10,6 +11,11 @@ namespace Atc.Rest.Client.Serialization
             this JsonSerializerOptions source,
             params JsonConverter[] converters)
         {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
             var result = new JsonSerializerOptions
             {
                 AllowTrailingCommas = source.AllowTrailingCommas,

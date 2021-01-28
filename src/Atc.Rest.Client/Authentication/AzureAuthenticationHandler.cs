@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,9 +14,19 @@ namespace Atc.Rest.Client.Authentication
             this.tokenProvider = tokenProvider;
         }
 
-        protected async override Task<HttpResponseMessage> SendAsync(
+        protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            return InvokeSendAsync(request, cancellationToken);
+        }
+
+        private async Task<HttpResponseMessage> InvokeSendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             request.Headers.Authorization = await tokenProvider.GetTokenAsync(cancellationToken).ConfigureAwait(false);
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);

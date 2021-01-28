@@ -61,17 +61,7 @@ namespace Atc.Rest.Client.Builder
                     GetHeaders(response)));
         }
 
-        private bool IsSuccessStatus(HttpResponseMessage responseMessage)
-            => responseCodes.TryGetValue(responseMessage.StatusCode, out var isSuccess)
-                ? isSuccess
-                : responseMessage.IsSuccessStatusCode;
-
-        private ContentSerializerDelegate? GetSerializer(HttpStatusCode statusCode)
-            => responseSerializers.TryGetValue(statusCode, out var deserializer)
-             ? deserializer
-             : null;
-
-        private IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(HttpResponseMessage responseMessage)
+        private static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(HttpResponseMessage responseMessage)
         {
             var headers = responseMessage.Headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.Ordinal);
 
@@ -85,6 +75,16 @@ namespace Atc.Rest.Client.Builder
 
             return headers;
         }
+
+        private bool IsSuccessStatus(HttpResponseMessage responseMessage)
+            => responseCodes.TryGetValue(responseMessage.StatusCode, out var isSuccess)
+                ? isSuccess
+                : responseMessage.IsSuccessStatusCode;
+
+        private ContentSerializerDelegate? GetSerializer(HttpStatusCode statusCode)
+            => responseSerializers.TryGetValue(statusCode, out var deserializer)
+             ? deserializer
+             : null;
 
         private IMessageResponseBuilder AddEmptyResponse(HttpStatusCode statusCode, bool isSuccess)
         {
