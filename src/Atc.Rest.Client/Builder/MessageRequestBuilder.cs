@@ -105,12 +105,12 @@ namespace Atc.Rest.Client.Builder
                 throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
 
-            if (value == null || string.IsNullOrWhiteSpace(value.ToString().Trim()))
+            if (value is null || string.IsNullOrWhiteSpace(value.ToString()))
             {
                 return this;
             }
 
-            queryMapper[name] = value.ToString().Trim();
+            queryMapper[name] = value.ToString();
 
             return this;
         }
