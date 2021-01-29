@@ -13,6 +13,7 @@ namespace Atc.Rest.Client.Builder
         private readonly string template;
         private readonly IContractSerializer serializer;
         private readonly Dictionary<string, string> pathMapper;
+        private readonly Dictionary<string, string> headerMapper;
         private readonly Dictionary<string, string> queryMapper;
         private string content = string.Empty;
 
@@ -21,6 +22,7 @@ namespace Atc.Rest.Client.Builder
             this.template = pathTemplate ?? throw new ArgumentNullException(nameof(pathTemplate));
             this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             pathMapper = new Dictionary<string, string>(StringComparer.Ordinal);
+            headerMapper = new Dictionary<string, string>(StringComparer.Ordinal);
             queryMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         }
 
@@ -29,6 +31,11 @@ namespace Atc.Rest.Client.Builder
             var message = new HttpRequestMessage();
 
             message.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
+            foreach (var parameter in headerMapper)
+            {
+                message.Headers.Add(parameter.Key, parameter.Value);
+            }
+
             message.RequestUri = BuildRequestUri();
             message.Content = new StringContent(content);
             message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
@@ -70,20 +77,43 @@ namespace Atc.Rest.Client.Builder
             where T : struct
             => WithPathParameter(name, value.ToString());
 
-        public IMessageRequestBuilder WithQueryParameter(string name, string? value)
+        public IMessageRequestBuilder WithHeaderParameter(string name, string value)
         {
-            if (!string.IsNullOrEmpty(value))
+            if (string.IsNullOrWhiteSpace(name))
             {
-                // BANG added because nullable analyzer doesn't understand IsNullOrEmpty in .netstandard2.0
-                queryMapper[name] = value!;
+                throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new ArgumentException($"'{nameof(value)}' cannot be null or whitespace", nameof(value));
+            }
+
+            headerMapper[name] = value;
 
             return this;
         }
 
-        public IMessageRequestBuilder WithQueryParameter<T>(string name, T value)
+        public IMessageRequestBuilder WithHeaderParameter<T>(string name, T value)
             where T : struct
-            => WithQueryParameter(name, value.ToString());
+            => WithHeaderParameter(name, value.ToString());
+
+        public IMessageRequestBuilder WithQueryParameter(string name, object? value)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+            }
+
+            if (value is null || string.IsNullOrWhiteSpace(value.ToString()))
+            {
+                return this;
+            }
+
+            queryMapper[name] = value.ToString();
+
+            return this;
+        }
 
         private Uri BuildRequestUri()
         {
