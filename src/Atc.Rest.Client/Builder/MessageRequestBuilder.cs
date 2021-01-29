@@ -15,7 +15,7 @@ namespace Atc.Rest.Client.Builder
         private readonly Dictionary<string, string> pathMapper;
         private readonly Dictionary<string, string> headerMapper;
         private readonly Dictionary<string, string> queryMapper;
-        private string content = string.Empty;
+        private string? content;
 
         public MessageRequestBuilder(string pathTemplate, IContractSerializer serializer)
         {
@@ -24,6 +24,7 @@ namespace Atc.Rest.Client.Builder
             pathMapper = new Dictionary<string, string>(StringComparer.Ordinal);
             headerMapper = new Dictionary<string, string>(StringComparer.Ordinal);
             queryMapper = new Dictionary<string, string>(StringComparer.Ordinal);
+            WithHeaderParameter("accept", "application/json");
         }
 
         public HttpRequestMessage Build(HttpMethod method)
@@ -37,9 +38,13 @@ namespace Atc.Rest.Client.Builder
             }
 
             message.RequestUri = BuildRequestUri();
-            message.Content = new StringContent(content);
-            message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
             message.Method = method;
+
+            if (content is not null)
+            {
+                message.Content = new StringContent(content);
+                message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+            }
 
             return message;
         }
