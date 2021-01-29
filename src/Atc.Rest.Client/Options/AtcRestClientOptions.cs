@@ -8,9 +8,9 @@ namespace Atc.Rest.Client.Options
     {
         private TokenCredential? credential;
 
-        public virtual string? EnvironmentName { get; set; } = "dev";
+        public virtual string? EnvironmentName { get; set; }
 
-        public virtual EnvironmentType EnvironmentType { get; set; } = EnvironmentType.Development;
+        public virtual EnvironmentType EnvironmentType { get; set; }
 
         public virtual Uri? BaseAddress { get; set; }
 

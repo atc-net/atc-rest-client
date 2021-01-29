@@ -14,6 +14,11 @@ namespace Atc.Rest.Client.Authentication
 
         public BearerTokenProvider(AtcRestClientOptions options)
         {
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             if (string.IsNullOrWhiteSpace(options.IdentityScope))
             {
                 throw new ArgumentException($"The {nameof(AtcRestClientOptions.IdentityScope)} in {nameof(AtcRestClientOptions)} cannot be null or whitespace.", nameof(options));
