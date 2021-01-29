@@ -112,20 +112,12 @@ namespace Atc.Rest.Client.Tests.Builder
                 .Be($"/api/{fooValue}/bar/{bazValue}/biz");
         }
 
-        [Theory]
-        [InlineData(null, "foo")]
-        [InlineData("", "foo")]
-        [InlineData(" ", "foo")]
-        [InlineData("foo", null)]
-        [InlineData("foo", "")]
-        [InlineData("foo", " ")]
-        public void WithHeaderParameter_Throws_If_Parameters_Are_Null_Or_WhiteSpace(
-            string name,
-            string value)
+        [Fact]
+        public void WithHeaderParameter_Throws_If_Parameters_Are_Null_Or_WhiteSpace()
         {
             var sut = CreateSut();
 
-            sut.Invoking(x => x.WithHeaderParameter(name, value))
+            sut.Invoking(x => x.WithHeaderParameter(null, "foo"))
                 .Should()
                 .Throw<ArgumentException>();
         }

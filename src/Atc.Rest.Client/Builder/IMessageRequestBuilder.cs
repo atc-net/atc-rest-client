@@ -18,46 +18,19 @@ namespace Atc.Rest.Client.Builder
         /// </remarks>
         /// <param name="name">Name of the path parameter in the template path.</param>
         /// <param name="value">Value to use as the path parameter.</param>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null or whitespace.</exception>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-        IMessageRequestBuilder WithPathParameter(string name, string value);
-
-        /// <summary>
-        /// Adds a value to a path parameter in a path template passed to the constructor of the <see cref="IMessageRequestBuilder"/>.
-        /// </summary>
-        /// <remarks>
-        /// A <see cref="IMessageRequestBuilder"/> implementation is expected to get passed a path template with
-        /// optional path parameters inside, which this method will replace with the <paramref name="value"/>.
-        /// </remarks>
-        /// <typeparam name="T">The type of the value to add.</typeparam>
-        /// <param name="name">Name of the path parameter in the template path.</param>
-        /// <param name="value">Value to use as the path parameter. It will be converted to a string
-        /// before being added as a query string, using the <c>ToString()</c> method.</param>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
-        /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-        IMessageRequestBuilder WithPathParameter<T>(string name, T value)
-            where T : struct;
+        IMessageRequestBuilder WithPathParameter(string name, object? value);
 
         /// <summary>
         /// Adds a value to a header parameter in the headers.
         /// </summary>
         /// <param name="name">Name of the header parameter.</param>
         /// <param name="value">Value to use as the header parameter.</param>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-        IMessageRequestBuilder WithHeaderParameter(string name, string value);
-
-        /// <summary>
-        /// Adds a value to a header parameter in the headers.
-        /// </summary>
-        /// <typeparam name="T">The type of the value to add.</typeparam>
-        /// <param name="name">Name of the header parameter.</param>
-        /// <param name="value">Value to use as the header parameter. It will be converted to a string
-        /// before being added as a header, using the <c>ToString()</c> method.</param>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
-        /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-        IMessageRequestBuilder WithHeaderParameter<T>(string name, T value)
-            where T : struct;
+        IMessageRequestBuilder WithHeaderParameter(string name, object? value);
 
         /// <summary>
         /// Adds a query parameter to the created request URL.
@@ -67,6 +40,7 @@ namespace Atc.Rest.Client.Builder
         /// </remarks>
         /// <param name="name">Name of the query parameter.</param>
         /// <param name="value">Value of the query parameter.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
         IMessageRequestBuilder WithQueryParameter(string name, object? value);
 
