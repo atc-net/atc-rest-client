@@ -18,7 +18,7 @@ namespace Atc.Rest.Client.Builder
         /// </remarks>
         /// <param name="name">Name of the path parameter in the template path.</param>
         /// <param name="value">Value to use as the path parameter.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null or whitespace.</exception>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
         IMessageRequestBuilder WithPathParameter(string name, object? value);
@@ -28,7 +28,7 @@ namespace Atc.Rest.Client.Builder
         /// </summary>
         /// <param name="name">Name of the header parameter.</param>
         /// <param name="value">Value to use as the header parameter.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
         IMessageRequestBuilder WithHeaderParameter(string name, object? value);
 
@@ -40,7 +40,7 @@ namespace Atc.Rest.Client.Builder
         /// </remarks>
         /// <param name="name">Name of the query parameter.</param>
         /// <param name="value">Value of the query parameter.</param>
-        /// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
         IMessageRequestBuilder WithQueryParameter(string name, object? value);
 

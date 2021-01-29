@@ -2,7 +2,7 @@ using System;
 
 namespace Atc.Rest.Client.Options
 {
-    public abstract class AtcRestClientOptions
+    public class AtcRestClientOptions
     {        
         public virtual Uri? BaseAddress { get; set; }
 
