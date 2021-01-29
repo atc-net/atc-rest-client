@@ -56,47 +56,39 @@ namespace Atc.Rest.Client.Builder
             return this;
         }
 
-        public IMessageRequestBuilder WithPathParameter(string name, string value)
+        public IMessageRequestBuilder WithPathParameter(string name, object? value)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
 
-            if (string.IsNullOrWhiteSpace(value))
+            if (value is null || string.IsNullOrWhiteSpace(value.ToString()))
             {
                 throw new ArgumentException($"'{nameof(value)}' cannot be null or whitespace", nameof(value));
             }
 
-            pathMapper[name] = value;
+            pathMapper[name] = value.ToString();
 
             return this;
         }
 
-        public IMessageRequestBuilder WithPathParameter<T>(string name, T value)
-            where T : struct
-            => WithPathParameter(name, value.ToString());
-
-        public IMessageRequestBuilder WithHeaderParameter(string name, string value)
+        public IMessageRequestBuilder WithHeaderParameter(string name, object? value)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
                 throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
 
-            if (string.IsNullOrWhiteSpace(value))
+            if (value is null)
             {
-                throw new ArgumentException($"'{nameof(value)}' cannot be null or whitespace", nameof(value));
+                return this;
             }
 
-            headerMapper[name] = value;
+            headerMapper[name] = value.ToString();
 
             return this;
         }
-
-        public IMessageRequestBuilder WithHeaderParameter<T>(string name, T value)
-            where T : struct
-            => WithHeaderParameter(name, value.ToString());
 
         public IMessageRequestBuilder WithQueryParameter(string name, object? value)
         {
@@ -105,7 +97,7 @@ namespace Atc.Rest.Client.Builder
                 throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
 
-            if (value is null || string.IsNullOrWhiteSpace(value.ToString()))
+            if (value is null)
             {
                 return this;
             }
