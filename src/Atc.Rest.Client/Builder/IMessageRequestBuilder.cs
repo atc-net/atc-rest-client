@@ -39,6 +39,27 @@ namespace Atc.Rest.Client.Builder
             where T : struct;
 
         /// <summary>
+        /// Adds a value to a header parameter in the headers.
+        /// </summary>
+        /// <param name="name">Name of the header parameter.</param>
+        /// <param name="value">Value to use as the header parameter.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
+        /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+        IMessageRequestBuilder WithHeaderParameter(string name, string value);
+
+        /// <summary>
+        /// Adds a value to a header parameter in the headers.
+        /// </summary>
+        /// <typeparam name="T">The type of the value to add.</typeparam>
+        /// <param name="name">Name of the header parameter.</param>
+        /// <param name="value">Value to use as the header parameter. It will be converted to a string
+        /// before being added as a header, using the <c>ToString()</c> method.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
+        /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+        IMessageRequestBuilder WithHeaderParameter<T>(string name, T value)
+            where T : struct;
+
+        /// <summary>
         /// Adds a query parameter to the created request URL.
         /// </summary>
         /// <remarks>
@@ -47,18 +68,7 @@ namespace Atc.Rest.Client.Builder
         /// <param name="name">Name of the query parameter.</param>
         /// <param name="value">Value of the query parameter.</param>
         /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-        IMessageRequestBuilder WithQueryParameter(string name, string? value);
-
-        /// <summary>
-        /// Adds a query parameter to the created request URL.
-        /// </summary>
-        /// <typeparam name="T">The type of the value to add.</typeparam>
-        /// <param name="name">Name of the query parameter.</param>
-        /// <param name="value">Value of the query parameter. It will be converted to a string
-        /// before being added as a query string, using the <c>ToString()</c> method.</param>
-        /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-        IMessageRequestBuilder WithQueryParameter<T>(string name, T value)
-            where T : struct;
+        IMessageRequestBuilder WithQueryParameter(string name, object? value);
 
         /// <summary>
         /// Adds the body of the request.
