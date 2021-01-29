@@ -1,13 +1,15 @@
 using System;
+using System.ComponentModel;
 using Atc.Rest.Client.Builder;
 using Atc.Rest.Client.Options;
 using Atc.Rest.Client.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace Atc.Rest.Client
 {
     public static class ServiceCollectionExtensions
     {
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public static IServiceCollection AddAtcRestClient<TOptions>(
             this IServiceCollection services,
             string clientName,
