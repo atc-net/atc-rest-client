@@ -14,7 +14,7 @@ namespace Atc.Rest.Client.Builder
     {
         [SuppressMessage("StyleCop.CSharp.SpacingRules", "SA1000:Keywords should be spaced correctly", Justification = "False positive. new() syntax requires it.")]
         private static readonly EndpointResponse EmptyResponse
-            = new(false, HttpStatusCode.InternalServerError, string.Empty, null, new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+            = new(isSuccess: false, HttpStatusCode.InternalServerError, string.Empty, contentObject: null, new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
 
         private readonly HttpResponseMessage? response;
         private readonly IContractSerializer serializer;
@@ -32,16 +32,16 @@ namespace Atc.Rest.Client.Builder
         private delegate object? ContentSerializerDelegate(string content);
 
         public IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode)
-            => AddEmptyResponse(statusCode, false);
+            => AddEmptyResponse(statusCode, isSuccess: false);
 
         public IMessageResponseBuilder AddErrorResponse<TResponseContent>(HttpStatusCode statusCode)
-            => AddTypedResponse<TResponseContent>(statusCode, false);
+            => AddTypedResponse<TResponseContent>(statusCode, isSuccess: false);
 
         public IMessageResponseBuilder AddSuccessResponse(HttpStatusCode statusCode)
-            => AddEmptyResponse(statusCode, true);
+            => AddEmptyResponse(statusCode, isSuccess: true);
 
         public IMessageResponseBuilder AddSuccessResponse<TResponseContent>(HttpStatusCode statusCode)
-            => AddTypedResponse<TResponseContent>(statusCode, true);
+            => AddTypedResponse<TResponseContent>(statusCode, isSuccess: true);
 
         public async Task<TResult> BuildResponseAsync<TResult>(Func<EndpointResponse, TResult> factory, CancellationToken cancellationToken)
         {
