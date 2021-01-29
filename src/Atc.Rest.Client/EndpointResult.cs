@@ -1,6 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-
 namespace Atc.Rest.Client
 {
     public class EndpointResult<TSuccessContent, TErrorContent> : EndpointResponse
@@ -10,22 +7,20 @@ namespace Atc.Rest.Client
         {
         }
 
-        [return: MaybeNull]
-        public TResponseContent SuccessContent
+        public TSuccessContent? SuccessContent
         {
             get
             {
-                if (IsSuccess && ContentObject is TResponseContent content)
+                if (IsSuccess && ContentObject is TSuccessContent content)
                 {
                     return content;
                 }
-                
-                return null;
+
+                return default;
             }
         }
 
-        [return: MaybeNull]
-        public TErrorContent ErrorContent
+        public TErrorContent? ErrorContent
         {
             get
             {
@@ -33,8 +28,8 @@ namespace Atc.Rest.Client
                 {
                     return errorContent;
                 }
-                
-                return null;
+
+                return default;
             }
         }
     }
