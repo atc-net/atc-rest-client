@@ -24,14 +24,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F93C17A-E56
 	ProjectSection(SolutionItems) = preProject
 		src\.editorconfig = src\.editorconfig
 		src\directory.build.props = src\directory.build.props
-		src\directory.build.targets = src\directory.build.targets
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D98D5EEC-459E-40AF-8C0F-92F03BF084C4}"
 	ProjectSection(SolutionItems) = preProject
 		test\.editorconfig = test\.editorconfig
 		test\directory.build.props = test\directory.build.props
-		test\directory.build.targets = test\directory.build.targets
 	EndProjectSection
 EndProject
 Global

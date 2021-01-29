@@ -1,14 +1,15 @@
 using System;
-using Atc.Rest.Client.Authentication;
+using System.ComponentModel;
 using Atc.Rest.Client.Builder;
 using Atc.Rest.Client.Options;
 using Atc.Rest.Client.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace Atc.Rest.Client
 {
     public static class ServiceCollectionExtensions
     {
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public static IServiceCollection AddAtcRestClient<TOptions>(
             this IServiceCollection services,
             string clientName,
@@ -19,10 +20,6 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton(options);
             services.AddSingleton<AtcRestClientOptions>(options);
 
-            // Configure HttpClient and authorization
-            services.AddSingleton<IBearerTokenProvider, BearerTokenProvider>();
-            services.AddTransient<AzureAuthenticationHandler>();
-
             var clientBuilder = services.AddHttpClient(clientName, (s, c) =>
             {
                 var o = s.GetRequiredService<AtcRestClientOptions>();
@@ -30,7 +27,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 c.Timeout = o.Timeout;
             });
 
-            clientBuilder.AddHttpMessageHandler<AzureAuthenticationHandler>();
             httpClientBuilder?.Invoke(clientBuilder);
 
             // Register utilities
