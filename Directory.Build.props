@@ -29,7 +29,7 @@
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
 		<AnalysisLevel>latest</AnalysisLevel>
-		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>    
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <!-- Treat warnings as errors are always on when building in release -->
