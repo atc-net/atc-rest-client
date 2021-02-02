@@ -23,7 +23,7 @@
 
 # ATC.Net REST-Client
 
-Atc.Rest.Client is a basic collection of classes and extension methods for WebApi setup.
+Atc.Rest.Client is a basic collection of classes and extension methods for API client setup.
 
 # The workflow setup for this repository
 [Read more on Git-Flow](docs/GitFlow.md)
