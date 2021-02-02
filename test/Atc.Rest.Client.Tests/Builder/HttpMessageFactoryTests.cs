@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using Atc.Rest.Client.Builder;
 using Atc.Rest.Client.Serialization;
 using Atc.Test;
