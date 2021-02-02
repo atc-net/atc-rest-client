@@ -441,6 +441,7 @@ dotnet_diagnostic.MA0026.severity = suggestion      # https://github.com/atc-net
 # Microsoft - Code Analysis
 # https://docs.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/
 
+dotnet_diagnostic.CA1014.severity = none            
 
 # SecurityCodeScan
 # https://security-code-scan.github.io/
