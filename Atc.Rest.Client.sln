@@ -15,33 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".files", ".files", "{B301C3
 		version.json = version.json
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".text", ".text", "{C17073B2-67F2-4DFD-A077-23F6A5C79F7C}"
-	ProjectSection(SolutionItems) = preProject
-		LICENSE = LICENSE
-		README.md = README.md
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F93C17A-E567-4E32-AE28-5AF20CBC7A2B}"
-	ProjectSection(SolutionItems) = preProject
-		src\.editorconfig = src\.editorconfig
-		src\directory.build.props = src\directory.build.props
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D98D5EEC-459E-40AF-8C0F-92F03BF084C4}"
-	ProjectSection(SolutionItems) = preProject
-		test\.editorconfig = test\.editorconfig
-		test\directory.build.props = test\directory.build.props
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{F9CE297B-0564-4B04-8B57-F3B355B0BFBC}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{481A7563-CDD1-4273-BE94-EC1A8C9080A7}"
-	ProjectSection(SolutionItems) = preProject
-		.github\workflows\post-integration.yml = .github\workflows\post-integration.yml
-		.github\workflows\pre-integration.yml = .github\workflows\pre-integration.yml
-		.github\workflows\release.yml = .github\workflows\release.yml
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,11 +32,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{15A96F3F-4F3D-471D-885F-8C817EE0799E} = {6F93C17A-E567-4E32-AE28-5AF20CBC7A2B}
-		{2286E363-C6E4-41AB-9A03-FC8C4C8FEB79} = {D98D5EEC-459E-40AF-8C0F-92F03BF084C4}
-		{481A7563-CDD1-4273-BE94-EC1A8C9080A7} = {F9CE297B-0564-4B04-8B57-F3B355B0BFBC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7A92D7EC-F444-456B-A86C-D6683E016C35}
