@@ -21,9 +21,9 @@
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=atc-rest-client&metric=bugs)](https://sonarcloud.io/dashboard?id=atc-rest-client)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=atc-rest-client&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=atc-rest-client)
 
-# ATC.Net [PROJECT-TEXT]
+# ATC.Net REST-Client
 
-[PROJECT-TEXT].
+Atc.Rest.Client is a basic collection of classes and extension methods for WebApi setup.
 
 # The workflow setup for this repository
 [Read more on Git-Flow](docs/GitFlow.md)
