@@ -30,8 +30,6 @@ namespace Atc.Rest.Client.Builder
         public HttpRequestMessage Build(HttpMethod method)
         {
             var message = new HttpRequestMessage();
-
-            message.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
             foreach (var parameter in headerMapper)
             {
                 message.Headers.Add(parameter.Key, parameter.Value);
