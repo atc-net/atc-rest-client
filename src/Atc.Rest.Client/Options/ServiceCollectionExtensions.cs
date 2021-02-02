@@ -1,11 +1,10 @@
 using System;
 using System.ComponentModel;
 using Atc.Rest.Client.Builder;
-using Atc.Rest.Client.Options;
 using Atc.Rest.Client.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Atc.Rest.Client
+namespace Atc.Rest.Client.Options
 {
     public static class ServiceCollectionExtensions
     {
