@@ -3,15 +3,15 @@ using System.Net;
 
 namespace Atc.Rest.Client
 {
-    public class EndpointResponse
+    public class EndpointResponse : IEndpointResponse
     {
         public EndpointResponse(EndpointResponse response)
             : this(
-                  response?.IsSuccess ?? throw new System.ArgumentNullException(nameof(response)),
-                  response.StatusCode,
-                  response.Content,
-                  response.ContentObject,
-                  response.Headers)
+                response?.IsSuccess ?? throw new System.ArgumentNullException(nameof(response)),
+                response.StatusCode,
+                response.Content,
+                response.ContentObject,
+                response.Headers)
         {
         }
 
