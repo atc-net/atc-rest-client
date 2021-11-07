@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -160,6 +161,76 @@ namespace Atc.Rest.Client.Tests.Builder
                 .ToString()
                 .Should()
                 .Be($"/api?foo={fooValue}&bar={barValue}");
+        }
+
+        [Theory]
+        [InlineAutoNSubstituteData("/api")]
+        public void Should_Replace_Query_Parameters_With_ArrayOfItems1(
+            string template)
+        {
+            var sut = CreateSut(template);
+
+            var values = new[]
+            {
+                1,
+            };
+
+            sut.WithQueryParameter("foo", values);
+            var message = sut.Build(HttpMethod.Get);
+
+            message!
+                .RequestUri!
+                .ToString()
+                .Should()
+                .Be($"/api?foo={values[0]}");
+        }
+
+        [Theory]
+        [InlineAutoNSubstituteData("/api")]
+        public void Should_Replace_Query_Parameters_With_ArrayOfItems3(
+            string template)
+        {
+            var sut = CreateSut(template);
+
+            var values = new[]
+            {
+                1,
+                2,
+                3,
+            };
+
+            sut.WithQueryParameter("foo", values);
+            var message = sut.Build(HttpMethod.Get);
+
+            message!
+                .RequestUri!
+                .ToString()
+                .Should()
+                .Be($"/api?foo={values[0]}&foo={values[1]}&foo={values[2]}");
+        }
+
+        [Theory]
+        [InlineAutoNSubstituteData("/api")]
+        public void Should_Replace_Query_Parameters_With_ListOfItems3(
+            string template)
+        {
+            var sut = CreateSut(template);
+
+            var values = new List<Guid>
+            {
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+            };
+
+            sut.WithQueryParameter("foo", values);
+            var message = sut.Build(HttpMethod.Get);
+
+            message!
+                .RequestUri!
+                .ToString()
+                .Should()
+                .Be($"/api?foo={values[0]}&foo={values[1]}&foo={values[2]}");
         }
 
         [Fact]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -105,7 +106,24 @@ namespace Atc.Rest.Client.Builder
                 return this;
             }
 
-            queryMapper[name] = value.ToString();
+            var valueType = value.GetType();
+            if (valueType.IsArray || valueType.IsGenericType)
+            {
+                var objects = ((IEnumerable)value).Cast<object>().ToArray();
+                var sb = new StringBuilder();
+                for (int i = 0; i < objects.Length; i++)
+                {
+                    sb.Append(i == 0
+                        ? Uri.EscapeDataString(objects[i].ToString())
+                        : $"&{name}={Uri.EscapeDataString(objects[i].ToString())}");
+                }
+
+                queryMapper["#" + name] = sb.ToString();
+            }
+            else
+            {
+                queryMapper[name] = value.ToString();
+            }
 
             return this;
         }
@@ -123,10 +141,17 @@ namespace Atc.Rest.Client.Builder
             if (queryMapper.Any())
             {
                 urlBuilder.Append('?');
-                urlBuilder.Append(string.Join("&", queryMapper.Select(q => $"{q.Key}={Uri.EscapeDataString(q.Value)}")));
+                urlBuilder.Append(string.Join("&", queryMapper.Select(BuildQueryKeyEqualValue)));
             }
 
             return new Uri(urlBuilder.ToString(), UriKind.RelativeOrAbsolute);
+        }
+
+        private string BuildQueryKeyEqualValue(KeyValuePair<string, string> pair)
+        {
+            return pair.Key.StartsWith("#", StringComparison.Ordinal)
+                ? $"{pair.Key.Replace("#", string.Empty)}={pair.Value}"
+                : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
         }
     }
 }
