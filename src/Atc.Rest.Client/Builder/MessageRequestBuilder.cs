@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -31,6 +32,7 @@ namespace Atc.Rest.Client.Builder
             WithHeaderParameter("accept", "application/json");
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "OK - ByteArrayContent can't be disposed.")]
         public HttpRequestMessage Build(HttpMethod method)
         {
             var message = new HttpRequestMessage();
