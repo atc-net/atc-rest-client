@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using Atc.Rest.Client.Serialization;
+using Microsoft.AspNetCore.Http;
 
 namespace Atc.Rest.Client.Builder
 {
@@ -17,6 +19,7 @@ namespace Atc.Rest.Client.Builder
         private readonly Dictionary<string, string> headerMapper;
         private readonly Dictionary<string, string> queryMapper;
         private string? content;
+        private List<IFormFile>? contentFormFiles;
 
         public MessageRequestBuilder(string pathTemplate, IContractSerializer serializer)
         {
@@ -44,6 +47,25 @@ namespace Atc.Rest.Client.Builder
                 message.Content = new StringContent(content);
                 message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
             }
+            else if (contentFormFiles is not null)
+            {
+                var formDataContent = new MultipartFormDataContent();
+                foreach (var formFile in contentFormFiles)
+                {
+                    byte[] bytes;
+                    using (var binaryReader = new BinaryReader(formFile.OpenReadStream()))
+                    {
+                        bytes = binaryReader.ReadBytes((int)formFile.OpenReadStream().Length);
+                    }
+
+                    var bytesContent = new ByteArrayContent(bytes);
+                    formDataContent.Add(bytesContent, "Request", formFile.FileName);
+                }
+
+                message.Headers.Remove("accept");
+                message.Headers.Add("accept", "application/octet-stream");
+                message.Content = formDataContent;
+            }
 
             return message;
         }
@@ -55,7 +77,22 @@ namespace Atc.Rest.Client.Builder
                 throw new ArgumentNullException(nameof(body));
             }
 
-            content = serializer.Serialize(body);
+            switch (body)
+            {
+                case IFormFile formFile:
+                    contentFormFiles = new List<IFormFile>
+                    {
+                        formFile,
+                    };
+                    break;
+                case List<IFormFile> formFiles:
+                    contentFormFiles = new List<IFormFile>();
+                    contentFormFiles.AddRange(formFiles);
+                    break;
+                default:
+                    content = serializer.Serialize(body);
+                    break;
+            }
 
             return this;
         }
