@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Atc.Rest.Client.Serialization;
@@ -50,16 +51,34 @@ namespace Atc.Rest.Client.Builder
                 return factory(EmptyResponse);
             }
 
-            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
+            {
+                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                return factory(
+                    new EndpointResponse(
+                        IsSuccessStatus(response),
+                        response.StatusCode,
+                        content,
+                        GetSerializer(response.StatusCode)?.Invoke(content),
+                        GetHeaders(response)));
+            }
+
+            var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
             return factory(
                 new EndpointResponse(
                     IsSuccessStatus(response),
                     response.StatusCode,
-                    content,
-                    GetSerializer(response.StatusCode)?.Invoke(content),
+                    string.Empty,
+                    contentObject,
                     GetHeaders(response)));
         }
+
+        private static bool UseReadAsStringFromContentDependingOnContentType(MediaTypeHeaderValue? headersContentType)
+            => headersContentType?.MediaType is null ||
+               headersContentType.MediaType.Contains("json") ||
+               headersContentType.MediaType.Contains("text");
 
         private static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(HttpResponseMessage responseMessage)
         {
