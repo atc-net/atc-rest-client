@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Net;
 
@@ -38,5 +39,12 @@ namespace Atc.Rest.Client
         public object? ContentObject { get; }
 
         public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
+
+        protected TResult CastContent<TResult>()
+            where TResult : class
+        {
+            return ContentObject as TResult ??
+                   throw new InvalidCastException($"ContentObject is not of type {typeof(TResult).Name}");
+        }
     }
 }
