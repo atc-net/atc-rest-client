@@ -12,10 +12,10 @@ namespace Atc.Rest.Client.Tests
     {
         [Theory, AutoNSubstituteData]
         public void SuccessContent_Returns_Respose_Upon_Success(
-            TestResponse contentObject,
+            SuccessResponse contentObject,
             IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
-            var sut = new EndpointResponse<TestResponse>(
+            var sut = new EndpointResponse<SuccessResponse>(
                 true,
                 HttpStatusCode.OK,
                 JsonSerializer.Serialize(contentObject),
@@ -31,7 +31,7 @@ namespace Atc.Rest.Client.Tests
         [Fact]
         public void SuccessContent_Returns_Null_Upon_Failure()
         {
-            var sut = new EndpointResponse<TestResponse>(
+            var sut = new EndpointResponse<SuccessResponse>(
                 false,
                 HttpStatusCode.BadRequest,
                 string.Empty,
@@ -46,10 +46,10 @@ namespace Atc.Rest.Client.Tests
 
         [Theory, AutoNSubstituteData]
         public void FailureContent_Returns_Null_Upon_Success(
-            TestResponse contentObject,
+            SuccessResponse contentObject,
             IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
-            var sut = new EndpointResponse<TestResponse, BadResponse>(
+            var sut = new EndpointResponse<SuccessResponse, BadResponse>(
                 true,
                 HttpStatusCode.OK,
                 JsonSerializer.Serialize(contentObject),
@@ -67,7 +67,7 @@ namespace Atc.Rest.Client.Tests
             BadResponse contentObject,
             IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
-            var sut = new EndpointResponse<TestResponse, BadResponse>(
+            var sut = new EndpointResponse<SuccessResponse, BadResponse>(
                 false,
                 HttpStatusCode.BadRequest,
                 JsonSerializer.Serialize(contentObject),
@@ -78,16 +78,6 @@ namespace Atc.Rest.Client.Tests
                 .ErrorContent
                 .Should()
                 .Be(contentObject);
-        }
-
-        public class TestResponse
-        {
-            public string? Name { get; set; }
-        }
-
-        public class BadResponse
-        {
-            public string? Error { get; set; }
         }
     }
 }

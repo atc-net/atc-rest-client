@@ -119,15 +119,15 @@ namespace Atc.Rest.Client.Tests.Builder
         [Theory, AutoNSubstituteData]
         public async Task Should_SuccessContent_NotBeNull(
             HttpResponseMessage response,
-            TestResponse expectedResponse,
+            SuccessResponse expectedResponse,
             CancellationToken cancellationToken)
         {
-            serializer.Deserialize<TestResponse>(Arg.Any<string>()).Returns(expectedResponse);
+            serializer.Deserialize<SuccessResponse>(Arg.Any<string>()).Returns(expectedResponse);
             var sut = CreateSut(response);
             response.StatusCode = HttpStatusCode.OK;
 
-            var result = await sut.AddSuccessResponse<TestResponse>(response.StatusCode)
-                .BuildResponseAsync<TestResponse>(cancellationToken);
+            var result = await sut.AddSuccessResponse<SuccessResponse>(response.StatusCode)
+                .BuildResponseAsync<SuccessResponse>(cancellationToken);
 
             result
                 .SuccessContent
@@ -138,15 +138,15 @@ namespace Atc.Rest.Client.Tests.Builder
         [Theory, AutoNSubstituteData]
         public async Task Should_FailureContent_BeNull(
             HttpResponseMessage response,
-            TestResponse expectedResponse,
+            SuccessResponse expectedResponse,
             CancellationToken cancellationToken)
         {
-            serializer.Deserialize<TestResponse>(Arg.Any<string>()).Returns(expectedResponse);
+            serializer.Deserialize<SuccessResponse>(Arg.Any<string>()).Returns(expectedResponse);
             var sut = CreateSut(response);
             response.StatusCode = HttpStatusCode.OK;
 
-            var result = await sut.AddSuccessResponse<TestResponse>(response.StatusCode)
-                .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
+            var result = await sut.AddSuccessResponse<SuccessResponse>(response.StatusCode)
+                .BuildResponseAsync<SuccessResponse, BadResponse>(cancellationToken);
 
             result
                 .ErrorContent
@@ -165,7 +165,7 @@ namespace Atc.Rest.Client.Tests.Builder
             response.StatusCode = HttpStatusCode.BadRequest;
 
             var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
-                .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
+                .BuildResponseAsync<SuccessResponse, BadResponse>(cancellationToken);
 
             result
                 .ErrorContent
@@ -184,22 +184,12 @@ namespace Atc.Rest.Client.Tests.Builder
             response.StatusCode = HttpStatusCode.BadRequest;
 
             var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
-                .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
+                .BuildResponseAsync<SuccessResponse, BadResponse>(cancellationToken);
 
             result
                 .SuccessContent
                 .Should()
                 .BeNull();
-        }
-
-        public class TestResponse
-        {
-            public string? Name { get; set; }
-        }
-
-        public class BadResponse
-        {
-            public string? Error { get; set; }
         }
     }
 }
