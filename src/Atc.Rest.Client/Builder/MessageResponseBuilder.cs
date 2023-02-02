@@ -75,6 +75,21 @@ namespace Atc.Rest.Client.Builder
                     GetHeaders(response)));
         }
 
+        public Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
+            CancellationToken cancellationToken)
+            where TSuccessContent : class =>
+            BuildResponseAsync(
+                r => new EndpointResponse<TSuccessContent>(r),
+                cancellationToken);
+
+        public Task<EndpointResponse<TSuccessContent, TErrorContent>>
+            BuildResponseAsync<TSuccessContent, TErrorContent>(CancellationToken cancellationToken)
+            where TSuccessContent : class
+            where TErrorContent : class =>
+            BuildResponseAsync(
+                r => new EndpointResponse<TSuccessContent, TErrorContent>(r),
+                cancellationToken);
+
         private static bool UseReadAsStringFromContentDependingOnContentType(MediaTypeHeaderValue? headersContentType)
             => headersContentType?.MediaType is null ||
                headersContentType.MediaType.Contains("json") ||
