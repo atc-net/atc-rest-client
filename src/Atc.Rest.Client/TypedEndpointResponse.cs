@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Net;
 
+#pragma disable SA1402 // File may only contain a single type
+
 namespace Atc.Rest.Client
 {
     public class TypedEndpointResponse<T>
