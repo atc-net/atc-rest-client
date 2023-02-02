@@ -75,13 +75,13 @@ namespace Atc.Rest.Client.Builder
                     GetHeaders(response)));
         }
 
-        public async Task<TypedEndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
+        public async Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
             CancellationToken cancellationToken)
             where TSuccessContent : class
         {
             if (response is null)
             {
-                return new TypedEndpointResponse<TSuccessContent>(
+                return new EndpointResponse<TSuccessContent>(
                     false,
                     HttpStatusCode.InternalServerError,
                     string.Empty,
@@ -93,7 +93,7 @@ namespace Atc.Rest.Client.Builder
             {
                 var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-                return new TypedEndpointResponse<TSuccessContent>(
+                return new EndpointResponse<TSuccessContent>(
                     IsSuccessStatus(response),
                     response.StatusCode,
                     content,
@@ -103,7 +103,7 @@ namespace Atc.Rest.Client.Builder
 
             var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
-            return new TypedEndpointResponse<TSuccessContent>(
+            return new EndpointResponse<TSuccessContent>(
                 IsSuccessStatus(response),
                 response.StatusCode,
                 string.Empty,
@@ -111,14 +111,14 @@ namespace Atc.Rest.Client.Builder
                 GetHeaders(response));
         }
 
-        public async Task<TypedEndpointResponse<TSuccessContent, TFailureContent>>
+        public async Task<EndpointResponse<TSuccessContent, TFailureContent>>
             BuildResponseAsync<TSuccessContent, TFailureContent>(CancellationToken cancellationToken)
             where TSuccessContent : class
             where TFailureContent : class
         {
             if (response is null)
             {
-                return new TypedEndpointResponse<TSuccessContent, TFailureContent>(
+                return new EndpointResponse<TSuccessContent, TFailureContent>(
                     false,
                     HttpStatusCode.InternalServerError,
                     string.Empty,
@@ -132,7 +132,7 @@ namespace Atc.Rest.Client.Builder
                 var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var serialized = GetSerializer(response.StatusCode)?.Invoke(content);
 
-                return new TypedEndpointResponse<TSuccessContent, TFailureContent>(
+                return new EndpointResponse<TSuccessContent, TFailureContent>(
                     isSuccessStatus,
                     response.StatusCode,
                     content,
@@ -142,7 +142,7 @@ namespace Atc.Rest.Client.Builder
 
             var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
-            return new TypedEndpointResponse<TSuccessContent, TFailureContent>(
+            return new EndpointResponse<TSuccessContent, TFailureContent>(
                 isSuccessStatus,
                 response.StatusCode,
                 string.Empty,

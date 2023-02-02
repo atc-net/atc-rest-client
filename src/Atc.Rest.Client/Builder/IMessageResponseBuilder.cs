@@ -19,11 +19,11 @@ namespace Atc.Rest.Client.Builder
             Func<EndpointResponse, TResult> factory,
             CancellationToken cancellationToken);
 
-        Task<TypedEndpointResponse<TSuccessContent>>
+        Task<EndpointResponse<TSuccessContent>>
             BuildResponseAsync<TSuccessContent>(CancellationToken cancellationToken)
             where TSuccessContent : class;
 
-        Task<TypedEndpointResponse<TSuccessContent, TFailureContent>>
+        Task<EndpointResponse<TSuccessContent, TFailureContent>>
             BuildResponseAsync<TSuccessContent, TFailureContent>(CancellationToken cancellationToken)
             where TSuccessContent : class
             where TFailureContent : class;

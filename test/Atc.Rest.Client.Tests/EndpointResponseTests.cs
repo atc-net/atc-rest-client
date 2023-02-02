@@ -8,14 +8,14 @@ using Xunit;
 
 namespace Atc.Rest.Client.Tests
 {
-    public class TypedEndpointResponseTests
+    public class EndpointResponseTests
     {
         [Theory, AutoNSubstituteData]
         public void SuccessContent_Returns_Respose_Upon_Success(
             TestResponse contentObject,
             IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
-            var sut = new TypedEndpointResponse<TestResponse>(
+            var sut = new EndpointResponse<TestResponse>(
                 true,
                 HttpStatusCode.OK,
                 JsonSerializer.Serialize(contentObject),
@@ -31,7 +31,7 @@ namespace Atc.Rest.Client.Tests
         [Fact]
         public void SuccessContent_Returns_Null_Upon_Failure()
         {
-            var sut = new TypedEndpointResponse<TestResponse>(
+            var sut = new EndpointResponse<TestResponse>(
                 false,
                 HttpStatusCode.BadRequest,
                 string.Empty,
@@ -49,7 +49,7 @@ namespace Atc.Rest.Client.Tests
             TestResponse contentObject,
             IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
-            var sut = new TypedEndpointResponse<TestResponse, BadResponse>(
+            var sut = new EndpointResponse<TestResponse, BadResponse>(
                 true,
                 HttpStatusCode.OK,
                 JsonSerializer.Serialize(contentObject),
@@ -67,7 +67,7 @@ namespace Atc.Rest.Client.Tests
             BadResponse contentObject,
             IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
-            var sut = new TypedEndpointResponse<TestResponse, BadResponse>(
+            var sut = new EndpointResponse<TestResponse, BadResponse>(
                 false,
                 HttpStatusCode.BadRequest,
                 JsonSerializer.Serialize(contentObject),
