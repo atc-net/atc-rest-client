@@ -75,80 +75,20 @@ namespace Atc.Rest.Client.Builder
                     GetHeaders(response)));
         }
 
-        public async Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
+        public Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
             CancellationToken cancellationToken)
-            where TSuccessContent : class
-        {
-            if (response is null)
-            {
-                return new EndpointResponse<TSuccessContent>(
-                    false,
-                    HttpStatusCode.InternalServerError,
-                    string.Empty,
-                    null,
-                    new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
-            }
+            where TSuccessContent : class =>
+            BuildResponseAsync(
+                r => new EndpointResponse<TSuccessContent>(r),
+                cancellationToken);
 
-            if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
-            {
-                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-                return new EndpointResponse<TSuccessContent>(
-                    IsSuccessStatus(response),
-                    response.StatusCode,
-                    content,
-                    GetSerializer(response.StatusCode)?.Invoke(content) as TSuccessContent,
-                    GetHeaders(response));
-            }
-
-            var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-
-            return new EndpointResponse<TSuccessContent>(
-                IsSuccessStatus(response),
-                response.StatusCode,
-                string.Empty,
-                contentObject as TSuccessContent,
-                GetHeaders(response));
-        }
-
-        public async Task<EndpointResponse<TSuccessContent, TErrorContent>>
+        public Task<EndpointResponse<TSuccessContent, TErrorContent>>
             BuildResponseAsync<TSuccessContent, TErrorContent>(CancellationToken cancellationToken)
             where TSuccessContent : class
-            where TErrorContent : class
-        {
-            if (response is null)
-            {
-                return new EndpointResponse<TSuccessContent, TErrorContent>(
-                    false,
-                    HttpStatusCode.InternalServerError,
-                    string.Empty,
-                    null,
-                    new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
-            }
-
-            var isSuccessStatus = IsSuccessStatus(response);
-            if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
-            {
-                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var serialized = GetSerializer(response.StatusCode)?.Invoke(content);
-
-                return new EndpointResponse<TSuccessContent, TErrorContent>(
-                    isSuccessStatus,
-                    response.StatusCode,
-                    content,
-                    isSuccessStatus ? serialized as TSuccessContent : serialized as TErrorContent,
-                    GetHeaders(response));
-            }
-
-            var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-
-            return new EndpointResponse<TSuccessContent, TErrorContent>(
-                isSuccessStatus,
-                response.StatusCode,
-                string.Empty,
-                isSuccessStatus ? contentObject as TSuccessContent : contentObject as TErrorContent,
-                GetHeaders(response));
-        }
+            where TErrorContent : class =>
+            BuildResponseAsync(
+                r => new EndpointResponse<TSuccessContent, TErrorContent>(r),
+                cancellationToken);
 
         private static bool UseReadAsStringFromContentDependingOnContentType(MediaTypeHeaderValue? headersContentType)
             => headersContentType?.MediaType is null ||
