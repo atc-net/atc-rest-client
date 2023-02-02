@@ -72,10 +72,10 @@ namespace Atc.Rest.Client
         public T? SuccessContent => IsSuccess ? CastContent<T>() : null;
     }
 
-    public class EndpointResponse<TSuccessContent, TFailureContent>
+    public class EndpointResponse<TSuccessContent, TErrorContent>
         : EndpointResponse
         where TSuccessContent : class
-        where TFailureContent : class
+        where TErrorContent : class
     {
         public EndpointResponse(EndpointResponse response)
             : base(response)
@@ -94,6 +94,6 @@ namespace Atc.Rest.Client
 
         public TSuccessContent? SuccessContent => IsSuccess ? CastContent<TSuccessContent>() : null;
 
-        public TFailureContent? FailureContent => !IsSuccess ? CastContent<TFailureContent>() : null;
+        public TErrorContent? ErrorContent => !IsSuccess ? CastContent<TErrorContent>() : null;
     }
 }

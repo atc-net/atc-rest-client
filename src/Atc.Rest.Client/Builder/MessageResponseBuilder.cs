@@ -111,14 +111,14 @@ namespace Atc.Rest.Client.Builder
                 GetHeaders(response));
         }
 
-        public async Task<EndpointResponse<TSuccessContent, TFailureContent>>
-            BuildResponseAsync<TSuccessContent, TFailureContent>(CancellationToken cancellationToken)
+        public async Task<EndpointResponse<TSuccessContent, TErrorContent>>
+            BuildResponseAsync<TSuccessContent, TErrorContent>(CancellationToken cancellationToken)
             where TSuccessContent : class
-            where TFailureContent : class
+            where TErrorContent : class
         {
             if (response is null)
             {
-                return new EndpointResponse<TSuccessContent, TFailureContent>(
+                return new EndpointResponse<TSuccessContent, TErrorContent>(
                     false,
                     HttpStatusCode.InternalServerError,
                     string.Empty,
@@ -132,21 +132,21 @@ namespace Atc.Rest.Client.Builder
                 var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var serialized = GetSerializer(response.StatusCode)?.Invoke(content);
 
-                return new EndpointResponse<TSuccessContent, TFailureContent>(
+                return new EndpointResponse<TSuccessContent, TErrorContent>(
                     isSuccessStatus,
                     response.StatusCode,
                     content,
-                    isSuccessStatus ? serialized as TSuccessContent : serialized as TFailureContent,
+                    isSuccessStatus ? serialized as TSuccessContent : serialized as TErrorContent,
                     GetHeaders(response));
             }
 
             var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
 
-            return new EndpointResponse<TSuccessContent, TFailureContent>(
+            return new EndpointResponse<TSuccessContent, TErrorContent>(
                 isSuccessStatus,
                 response.StatusCode,
                 string.Empty,
-                isSuccessStatus ? contentObject as TSuccessContent : contentObject as TFailureContent,
+                isSuccessStatus ? contentObject as TSuccessContent : contentObject as TErrorContent,
                 GetHeaders(response));
         }
 

@@ -149,7 +149,7 @@ namespace Atc.Rest.Client.Tests.Builder
                 .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
 
             result
-                .FailureContent
+                .ErrorContent
                 .Should()
                 .BeNull();
         }
@@ -168,7 +168,7 @@ namespace Atc.Rest.Client.Tests.Builder
                 .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
 
             result
-                .FailureContent
+                .ErrorContent
                 .Should()
                 .BeEquivalentTo(expectedResponse);
         }

@@ -23,9 +23,9 @@ namespace Atc.Rest.Client.Builder
             BuildResponseAsync<TSuccessContent>(CancellationToken cancellationToken)
             where TSuccessContent : class;
 
-        Task<EndpointResponse<TSuccessContent, TFailureContent>>
-            BuildResponseAsync<TSuccessContent, TFailureContent>(CancellationToken cancellationToken)
+        Task<EndpointResponse<TSuccessContent, TErrorContent>>
+            BuildResponseAsync<TSuccessContent, TErrorContent>(CancellationToken cancellationToken)
             where TSuccessContent : class
-            where TFailureContent : class;
+            where TErrorContent : class;
     }
 }

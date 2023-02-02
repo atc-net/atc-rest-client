@@ -57,7 +57,7 @@ namespace Atc.Rest.Client.Tests
                 headers);
 
             sut
-                .FailureContent
+                .ErrorContent
                 .Should()
                 .BeNull();
         }
@@ -75,7 +75,7 @@ namespace Atc.Rest.Client.Tests
                 headers);
 
             sut
-                .FailureContent
+                .ErrorContent
                 .Should()
                 .Be(contentObject);
         }
