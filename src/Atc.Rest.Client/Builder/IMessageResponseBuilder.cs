@@ -15,6 +15,17 @@ namespace Atc.Rest.Client.Builder
 
         IMessageResponseBuilder AddErrorResponse<TResponseContent>(HttpStatusCode statusCode);
 
-        Task<TResult> BuildResponseAsync<TResult>(Func<EndpointResponse, TResult> factory, CancellationToken cancellationToken);
+        Task<TResult> BuildResponseAsync<TResult>(
+            Func<EndpointResponse, TResult> factory,
+            CancellationToken cancellationToken);
+
+        Task<TypedEndpointResponse<TSuccessContent>>
+            BuildResponseAsync<TSuccessContent>(CancellationToken cancellationToken)
+            where TSuccessContent : class;
+
+        Task<TypedEndpointResponse<TSuccessContent, TFailureContent>>
+            BuildResponseAsync<TSuccessContent, TFailureContent>(CancellationToken cancellationToken)
+            where TSuccessContent : class
+            where TFailureContent : class;
     }
 }

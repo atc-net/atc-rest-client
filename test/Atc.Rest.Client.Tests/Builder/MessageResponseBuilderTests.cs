@@ -43,7 +43,7 @@ namespace Atc.Rest.Client.Tests.Builder
             CancellationToken cancellationToken)
         {
             var sut = CreateSut(response);
-            response.StatusCode = HttpStatusCode.NotFound;
+            response.StatusCode = HttpStatusCode.OK;
 
             var result = await sut.AddSuccessResponse(response.StatusCode)
                 .BuildResponseAsync(res => res, cancellationToken);
@@ -114,6 +114,92 @@ namespace Atc.Rest.Client.Tests.Builder
                 .Headers
                 .Should()
                 .BeEquivalentTo(expected);
+        }
+
+        [Theory, AutoNSubstituteData]
+        public async Task Should_SuccessContent_NotBeNull(
+            HttpResponseMessage response,
+            TestResponse expectedResponse,
+            CancellationToken cancellationToken)
+        {
+            serializer.Deserialize<TestResponse>(Arg.Any<string>()).Returns(expectedResponse);
+            var sut = CreateSut(response);
+            response.StatusCode = HttpStatusCode.OK;
+
+            var result = await sut.AddSuccessResponse<TestResponse>(response.StatusCode)
+                .BuildResponseAsync<TestResponse>(cancellationToken);
+
+            result
+                .SuccessContent
+                .Should()
+                .BeEquivalentTo(expectedResponse);
+        }
+
+        [Theory, AutoNSubstituteData]
+        public async Task Should_FailureContent_BeNull(
+            HttpResponseMessage response,
+            TestResponse expectedResponse,
+            CancellationToken cancellationToken)
+        {
+            serializer.Deserialize<TestResponse>(Arg.Any<string>()).Returns(expectedResponse);
+            var sut = CreateSut(response);
+            response.StatusCode = HttpStatusCode.OK;
+
+            var result = await sut.AddSuccessResponse<TestResponse>(response.StatusCode)
+                .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
+
+            result
+                .FailureContent
+                .Should()
+                .BeNull();
+        }
+
+        [Theory, AutoNSubstituteData]
+        public async Task Should_FailureContent_NotBeNull(
+            HttpResponseMessage response,
+            BadResponse expectedResponse,
+            CancellationToken cancellationToken)
+        {
+            serializer.Deserialize<BadResponse>(Arg.Any<string>()).Returns(expectedResponse);
+            var sut = CreateSut(response);
+            response.StatusCode = HttpStatusCode.BadRequest;
+
+            var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
+                .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
+
+            result
+                .FailureContent
+                .Should()
+                .BeEquivalentTo(expectedResponse);
+        }
+
+        [Theory, AutoNSubstituteData]
+        public async Task Should_SuccessContent_BeNull(
+            HttpResponseMessage response,
+            BadResponse expectedResponse,
+            CancellationToken cancellationToken)
+        {
+            serializer.Deserialize<BadResponse>(Arg.Any<string>()).Returns(expectedResponse);
+            var sut = CreateSut(response);
+            response.StatusCode = HttpStatusCode.BadRequest;
+
+            var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
+                .BuildResponseAsync<TestResponse, BadResponse>(cancellationToken);
+
+            result
+                .SuccessContent
+                .Should()
+                .BeNull();
+        }
+
+        public class TestResponse
+        {
+            public string? Name { get; set; }
+        }
+
+        public class BadResponse
+        {
+            public string? Error { get; set; }
         }
     }
 }

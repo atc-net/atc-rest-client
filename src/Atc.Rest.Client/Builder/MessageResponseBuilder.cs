@@ -75,6 +75,81 @@ namespace Atc.Rest.Client.Builder
                     GetHeaders(response)));
         }
 
+        public async Task<TypedEndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
+            CancellationToken cancellationToken)
+            where TSuccessContent : class
+        {
+            if (response is null)
+            {
+                return new TypedEndpointResponse<TSuccessContent>(
+                    false,
+                    HttpStatusCode.InternalServerError,
+                    string.Empty,
+                    null,
+                    new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+            }
+
+            if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
+            {
+                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                return new TypedEndpointResponse<TSuccessContent>(
+                    IsSuccessStatus(response),
+                    response.StatusCode,
+                    content,
+                    GetSerializer(response.StatusCode)?.Invoke(content) as TSuccessContent,
+                    GetHeaders(response));
+            }
+
+            var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+
+            return new TypedEndpointResponse<TSuccessContent>(
+                IsSuccessStatus(response),
+                response.StatusCode,
+                string.Empty,
+                contentObject as TSuccessContent,
+                GetHeaders(response));
+        }
+
+        public async Task<TypedEndpointResponse<TSuccessContent, TFailureContent>>
+            BuildResponseAsync<TSuccessContent, TFailureContent>(CancellationToken cancellationToken)
+            where TSuccessContent : class
+            where TFailureContent : class
+        {
+            if (response is null)
+            {
+                return new TypedEndpointResponse<TSuccessContent, TFailureContent>(
+                    false,
+                    HttpStatusCode.InternalServerError,
+                    string.Empty,
+                    null,
+                    new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+            }
+
+            var isSuccessStatus = IsSuccessStatus(response);
+            if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
+            {
+                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var serialized = GetSerializer(response.StatusCode)?.Invoke(content);
+
+                return new TypedEndpointResponse<TSuccessContent, TFailureContent>(
+                    isSuccessStatus,
+                    response.StatusCode,
+                    content,
+                    isSuccessStatus ? serialized as TSuccessContent : serialized as TFailureContent,
+                    GetHeaders(response));
+            }
+
+            var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+
+            return new TypedEndpointResponse<TSuccessContent, TFailureContent>(
+                isSuccessStatus,
+                response.StatusCode,
+                string.Empty,
+                isSuccessStatus ? contentObject as TSuccessContent : contentObject as TFailureContent,
+                GetHeaders(response));
+        }
+
         private static bool UseReadAsStringFromContentDependingOnContentType(MediaTypeHeaderValue? headersContentType)
             => headersContentType?.MediaType is null ||
                headersContentType.MediaType.Contains("json") ||
