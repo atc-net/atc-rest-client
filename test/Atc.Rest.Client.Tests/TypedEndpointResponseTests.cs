@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Net;
+using System.Text.Json;
 using Atc.Test;
 using FluentAssertions;
 using Xunit;
@@ -9,19 +11,21 @@ namespace Atc.Rest.Client.Tests
     public class TypedEndpointResponseTests
     {
         [Theory, AutoNSubstituteData]
-        public void SuccessContent_Returns_Respose_Upon_Success(TestResponse data)
+        public void SuccessContent_Returns_Respose_Upon_Success(
+            TestResponse contentObject,
+            IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
             var sut = new TypedEndpointResponse<TestResponse>(
                 true,
                 HttpStatusCode.OK,
-                string.Empty,
-                data,
-                new Dictionary<string, IEnumerable<string>>());
+                JsonSerializer.Serialize(contentObject),
+                contentObject,
+                headers);
 
             sut
                 .SuccessContent
                 .Should()
-                .Be(data);
+                .Be(contentObject);
         }
 
         [Fact]
@@ -32,7 +36,7 @@ namespace Atc.Rest.Client.Tests
                 HttpStatusCode.BadRequest,
                 string.Empty,
                 null,
-                new Dictionary<string, IEnumerable<string>>());
+                new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
 
             sut
                 .SuccessContent
@@ -41,14 +45,16 @@ namespace Atc.Rest.Client.Tests
         }
 
         [Theory, AutoNSubstituteData]
-        public void FailureContent_Returns_Null_Upon_Success(TestResponse data)
+        public void FailureContent_Returns_Null_Upon_Success(
+            TestResponse contentObject,
+            IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
             var sut = new TypedEndpointResponse<TestResponse, BadResponse>(
                 true,
                 HttpStatusCode.OK,
-                string.Empty,
-                data,
-                new Dictionary<string, IEnumerable<string>>());
+                JsonSerializer.Serialize(contentObject),
+                contentObject,
+                headers);
 
             sut
                 .FailureContent
@@ -57,19 +63,21 @@ namespace Atc.Rest.Client.Tests
         }
 
         [Theory, AutoNSubstituteData]
-        public void FailureContent_Returns_Response_Upon_Failure(BadResponse data)
+        public void FailureContent_Returns_Response_Upon_Failure(
+            BadResponse contentObject,
+            IReadOnlyDictionary<string, IEnumerable<string>> headers)
         {
             var sut = new TypedEndpointResponse<TestResponse, BadResponse>(
                 false,
                 HttpStatusCode.BadRequest,
-                string.Empty,
-                data,
-                new Dictionary<string, IEnumerable<string>>());
+                JsonSerializer.Serialize(contentObject),
+                contentObject,
+                headers);
 
             sut
                 .FailureContent
                 .Should()
-                .Be(data);
+                .Be(contentObject);
         }
 
         public class TestResponse
