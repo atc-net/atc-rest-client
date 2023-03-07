@@ -165,6 +165,25 @@ namespace Atc.Rest.Client.Tests.Builder
 
         [Theory]
         [InlineAutoNSubstituteData("/api")]
+        public void Should_Omit_Query_Parameters_With_Empty_Array(
+            string template)
+        {
+            var sut = CreateSut(template);
+
+            var values = Array.Empty<string>();
+
+            sut.WithQueryParameter("foo", values);
+            var message = sut.Build(HttpMethod.Get);
+
+            message!
+                .RequestUri!
+                .ToString()
+                .Should()
+                .Be($"/api");
+        }
+
+        [Theory]
+        [InlineAutoNSubstituteData("/api")]
         public void Should_Replace_Query_Parameters_With_ArrayOfItems1(
             string template)
         {
