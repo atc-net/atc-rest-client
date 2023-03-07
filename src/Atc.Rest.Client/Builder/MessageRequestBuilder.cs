@@ -149,6 +149,12 @@ namespace Atc.Rest.Client.Builder
             if (valueType.IsArray || valueType.IsGenericType)
             {
                 var objects = ((IEnumerable)value).Cast<object>().ToArray();
+
+                if (objects.Length == 0)
+                {
+                    return this;
+                }
+
                 var sb = new StringBuilder();
                 for (int i = 0; i < objects.Length; i++)
                 {
