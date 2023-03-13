@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Numerics;
 using System.Threading.Tasks;
+using System.Web;
 using Atc.Rest.Client.Builder;
 using Atc.Rest.Client.Serialization;
 using Atc.Test;
@@ -161,6 +163,43 @@ namespace Atc.Rest.Client.Tests.Builder
                 .ToString()
                 .Should()
                 .Be($"/api?foo={fooValue}&bar={barValue}");
+        }
+
+        [Theory]
+        [InlineAutoNSubstituteData("/api")]
+        public void Should_Omit_Query_Parameters_With_DateTime_List(
+            string template,
+            IEnumerable<Vector2> values)
+        {
+            var sut = CreateSut(template);
+
+            sut.WithQueryParameter("foo", values);
+            var message = sut.Build(HttpMethod.Get);
+
+            message!
+                .RequestUri!
+                .ToString()
+                .Should()
+                .BeEquivalentTo($"/api?foo={HttpUtility.UrlEncode(values.ToString())}");
+        }
+
+        [Theory]
+        [InlineAutoNSubstituteData("/api")]
+        public void Should_Omit_Query_Parameters_With_Empty_List(
+            string template)
+        {
+            var sut = CreateSut(template);
+
+            var values = new List<string>();
+
+            sut.WithQueryParameter("foo", values);
+            var message = sut.Build(HttpMethod.Get);
+
+            message!
+                .RequestUri!
+                .ToString()
+                .Should()
+                .Be($"/api");
         }
 
         [Theory]
