@@ -17,11 +17,10 @@ namespace Atc.Rest.Client.Options
             where TOptions : AtcRestClientOptions, new()
         {
             services.AddSingleton(options);
-            services.AddSingleton<AtcRestClientOptions>(options);
 
             var clientBuilder = services.AddHttpClient(clientName, (s, c) =>
             {
-                var o = s.GetRequiredService<AtcRestClientOptions>();
+                var o = s.GetRequiredService<TOptions>();
                 c.BaseAddress = o.BaseAddress;
                 c.Timeout = o.Timeout;
             });
