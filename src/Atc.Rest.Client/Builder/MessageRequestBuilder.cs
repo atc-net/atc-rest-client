@@ -140,28 +140,32 @@ namespace Atc.Rest.Client.Builder
                 throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
 
-            if (value is null)
+            if (value is not null)
             {
-                return this;
+                queryMapper[name] = value.ToString();
             }
 
-            var valueType = value.GetType();
-            if (valueType.IsArray || valueType.IsGenericType)
+            return this;
+        }
+
+        public IMessageRequestBuilder WithQueryParameter(string name, IList? value)
+        {
+            if (string.IsNullOrWhiteSpace(name))
             {
-                var objects = ((IEnumerable)value).Cast<object>().ToArray();
+                throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+            }
+
+            if (value is { Count: not 0 })
+            {
                 var sb = new StringBuilder();
-                for (int i = 0; i < objects.Length; i++)
+                for (var i = 0; i < value.Count; i++)
                 {
                     sb.Append(i == 0
-                        ? Uri.EscapeDataString(objects[i].ToString())
-                        : $"&{name}={Uri.EscapeDataString(objects[i].ToString())}");
+                        ? Uri.EscapeDataString(value[i].ToString())
+                        : $"&{name}={Uri.EscapeDataString(value[i].ToString())}");
                 }
 
                 queryMapper["#" + name] = sb.ToString();
-            }
-            else
-            {
-                queryMapper[name] = value.ToString();
             }
 
             return this;
