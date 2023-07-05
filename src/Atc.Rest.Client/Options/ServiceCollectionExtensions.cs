@@ -33,5 +33,28 @@ namespace Atc.Rest.Client.Options
 
             return services;
         }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static IServiceCollection AddAtcRestClient(
+            this IServiceCollection services,
+            string clientName,
+            Uri baseAddress,
+            TimeSpan timeout,
+            Action<IHttpClientBuilder>? httpClientBuilder = default)
+        {
+            var clientBuilder = services.AddHttpClient(clientName, (s, c) =>
+            {
+                c.BaseAddress = baseAddress;
+                c.Timeout = timeout;
+            });
+
+            httpClientBuilder?.Invoke(clientBuilder);
+
+            // Register utilities
+            services.AddSingleton<IHttpMessageFactory, HttpMessageFactory>();
+            services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+
+            return services;
+        }
     }
 }
