@@ -1,18 +1,14 @@
-using System.Collections.Generic;
-using System.Net;
+namespace Atc.Rest.Client;
 
-namespace Atc.Rest.Client
+public interface IEndpointResponse
 {
-    public interface IEndpointResponse
-    {
-        bool IsSuccess { get; }
+    bool IsSuccess { get; }
 
-        HttpStatusCode StatusCode { get; }
+    HttpStatusCode StatusCode { get; }
 
-        string Content { get; }
+    string Content { get; }
 
-        object? ContentObject { get; }
+    object? ContentObject { get; }
 
-        IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
-    }
+    IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
 }
