@@ -1,7 +1,6 @@
-namespace Atc.Rest.Client.Tests
+namespace Atc.Rest.Client.Tests;
+
+public class SuccessResponse
 {
-    public class SuccessResponse
-    {
-        public string? Name { get; set; }
-    }
+    public string? Name { get; set; }
 }

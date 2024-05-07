@@ -1,21 +1,24 @@
-using System.Net.Http;
-using Atc.Rest.Client.Serialization;
+namespace Atc.Rest.Client.Builder;
 
-namespace Atc.Rest.Client.Builder
+internal class HttpMessageFactory : IHttpMessageFactory
 {
-    internal class HttpMessageFactory : IHttpMessageFactory
+    private readonly IContractSerializer serializer;
+
+    public HttpMessageFactory(
+        IContractSerializer serializer)
     {
-        private readonly IContractSerializer serializer;
-
-        public HttpMessageFactory(IContractSerializer serializer)
-        {
-            this.serializer = serializer;
-        }
-
-        public IMessageRequestBuilder FromTemplate(string pathTemplate)
-            => new MessageRequestBuilder(pathTemplate, serializer);
-
-        public IMessageResponseBuilder FromResponse(HttpResponseMessage? response)
-            => new MessageResponseBuilder(response, serializer);
+        this.serializer = serializer;
     }
+
+    public IMessageRequestBuilder FromTemplate(
+        string pathTemplate)
+        => new MessageRequestBuilder(
+            pathTemplate,
+            serializer);
+
+    public IMessageResponseBuilder FromResponse(
+        HttpResponseMessage? response)
+        => new MessageResponseBuilder(
+            response,
+            serializer);
 }

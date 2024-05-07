@@ -1,11 +1,8 @@
-using System;
+namespace Atc.Rest.Client.Options;
 
-namespace Atc.Rest.Client.Options
+public class AtcRestClientOptions
 {
-    public class AtcRestClientOptions
-    {
-        public virtual Uri? BaseAddress { get; set; }
+    public virtual Uri? BaseAddress { get; set; }
 
-        public virtual TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
-    }
+    public virtual TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 }
