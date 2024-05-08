@@ -5,6 +5,7 @@
     <PackageId>Atc.Rest.Client</PackageId>
     <PackageTags>rest;api;netstandard;client</PackageTags>
     <Description>Atc Rest Client</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
