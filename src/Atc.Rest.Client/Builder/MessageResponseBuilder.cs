@@ -44,6 +44,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode)
         => AddTypedResponse<TResponseContent>(statusCode, isSuccess: true);
 
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "OK.")]
     public async Task<TResult> BuildResponseAsync<TResult>(
         Func<EndpointResponse, TResult> factory,
         CancellationToken cancellationToken)
@@ -57,13 +58,28 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         {
             var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-            return factory(
-                new EndpointResponse(
-                    IsSuccessStatus(response),
-                    response.StatusCode,
-                    content,
-                    GetSerializer(response.StatusCode)?.Invoke(content),
-                    GetHeaders(response)));
+            object? contentResponse = content;
+            var contentSerializerDelegate = GetSerializer(response.StatusCode);
+            if (contentSerializerDelegate is not null)
+            {
+                try
+                {
+                    contentResponse = contentSerializerDelegate.Invoke(content);
+                }
+                catch
+                {
+                    // Swallow
+                }
+            }
+
+            var endpointResponse = new EndpointResponse(
+                IsSuccessStatus(response),
+                response.StatusCode,
+                content,
+                contentResponse,
+                GetHeaders(response));
+
+            return factory(endpointResponse);
         }
 
         var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
