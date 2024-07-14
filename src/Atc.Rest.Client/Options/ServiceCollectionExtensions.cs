@@ -7,7 +7,8 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         string clientName,
         TOptions options,
-        Action<IHttpClientBuilder>? httpClientBuilder = default)
+        Action<IHttpClientBuilder>? httpClientBuilder = default,
+        IContractSerializer? contractSerializer = null)
         where TOptions : AtcRestClientOptions, new()
     {
         services.AddSingleton(options);
@@ -23,7 +24,14 @@ public static class ServiceCollectionExtensions
 
         // Register utilities
         services.AddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-        services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+        if (contractSerializer is null)
+        {
+            services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+        }
+        else
+        {
+            services.AddSingleton(contractSerializer);
+        }
 
         return services;
     }
@@ -34,9 +42,10 @@ public static class ServiceCollectionExtensions
         string clientName,
         Uri baseAddress,
         TimeSpan timeout,
-        Action<IHttpClientBuilder>? httpClientBuilder = default)
+        Action<IHttpClientBuilder>? httpClientBuilder = default,
+        IContractSerializer? contractSerializer = null)
     {
-        var clientBuilder = services.AddHttpClient(clientName, (s, c) =>
+        var clientBuilder = services.AddHttpClient(clientName, (_, c) =>
         {
             c.BaseAddress = baseAddress;
             c.Timeout = timeout;
@@ -46,7 +55,14 @@ public static class ServiceCollectionExtensions
 
         // Register utilities
         services.AddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-        services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+        if (contractSerializer is null)
+        {
+            services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+        }
+        else
+        {
+            services.AddSingleton(contractSerializer);
+        }
 
         return services;
     }
