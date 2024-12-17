@@ -134,6 +134,23 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
+    public void Should_Replace_Query_Parameters_With_Enum_Member_Value(string template)
+    {
+        const OperatorRole operatorRole = OperatorRole.Owner;
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("operatorRole", operatorRole);
+        var message = sut.Build(HttpMethod.Post);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api?operatorRole=owner");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
     public void Should_Replace_Query_Parameters_WithNull(
         string template,
         string? fooValue,

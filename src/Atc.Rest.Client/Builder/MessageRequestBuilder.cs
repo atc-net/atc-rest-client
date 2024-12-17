@@ -157,6 +157,15 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
             queryMapper["#" + name] = sb.ToString();
         }
+        else if (valueType.IsEnum)
+        {
+            queryMapper[name] = valueType
+                .GetTypeInfo()
+                .DeclaredMembers
+                .FirstOrDefault(x => x.Name == value.ToString())
+                ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
+                ?.Value ?? value.ToString();
+        }
         else
         {
             queryMapper[name] = value.ToString();
