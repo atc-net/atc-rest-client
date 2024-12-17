@@ -166,6 +166,14 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
                 ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
                 ?.Value ?? value.ToString();
         }
+        else if (value is DateTime dt)
+        {
+            queryMapper[name] = dt.ToString("o");
+        }
+        else if (value is DateTimeOffset dto)
+        {
+            queryMapper[name] = dto.ToString("o");
+        }
         else
         {
             queryMapper[name] = value.ToString();
