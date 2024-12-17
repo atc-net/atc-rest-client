@@ -148,7 +148,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         {
             var objects = ((IEnumerable)value).Cast<object>().ToArray();
             var sb = new StringBuilder();
-            for (int i = 0; i < objects.Length; i++)
+            for (var i = 0; i < objects.Length; i++)
             {
                 sb.Append(i == 0
                     ? Uri.EscapeDataString(objects[i].ToString())
@@ -205,9 +205,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
     private static string BuildQueryKeyEqualValue(
         KeyValuePair<string, string> pair)
-    {
-        return pair.Key.StartsWith("#", StringComparison.Ordinal)
+        => pair.Key.StartsWith("#", StringComparison.Ordinal)
             ? $"{pair.Key.Replace("#", string.Empty)}={pair.Value}"
             : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
-    }
 }
