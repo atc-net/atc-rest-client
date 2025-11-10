@@ -7,30 +7,27 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         string clientName,
         TOptions options,
-        Action<IHttpClientBuilder>? httpClientBuilder = default,
+        Action<IHttpClientBuilder>? httpClientBuilder = null,
         IContractSerializer? contractSerializer = null)
         where TOptions : AtcRestClientOptions, new()
     {
-        services.AddSingleton(options);
-
-        var clientBuilder = services.AddHttpClient(clientName, (s, c) =>
+        var clientBuilder = services.AddHttpClient(clientName, (_, c) =>
         {
-            var o = s.GetRequiredService<TOptions>();
-            c.BaseAddress = o.BaseAddress;
-            c.Timeout = o.Timeout;
+            c.BaseAddress = options.BaseAddress;
+            c.Timeout = options.Timeout;
         });
 
         httpClientBuilder?.Invoke(clientBuilder);
 
         // Register utilities
-        services.AddSingleton<IHttpMessageFactory, HttpMessageFactory>();
+        services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
         if (contractSerializer is null)
         {
-            services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+            services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
         }
         else
         {
-            services.AddSingleton(contractSerializer);
+            services.TryAddSingleton(contractSerializer);
         }
 
         return services;
@@ -42,7 +39,7 @@ public static class ServiceCollectionExtensions
         string clientName,
         Uri baseAddress,
         TimeSpan timeout,
-        Action<IHttpClientBuilder>? httpClientBuilder = default,
+        Action<IHttpClientBuilder>? httpClientBuilder = null,
         IContractSerializer? contractSerializer = null)
     {
         var clientBuilder = services.AddHttpClient(clientName, (_, c) =>
@@ -54,14 +51,14 @@ public static class ServiceCollectionExtensions
         httpClientBuilder?.Invoke(clientBuilder);
 
         // Register utilities
-        services.AddSingleton<IHttpMessageFactory, HttpMessageFactory>();
+        services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
         if (contractSerializer is null)
         {
-            services.AddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+            services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
         }
         else
         {
-            services.AddSingleton(contractSerializer);
+            services.TryAddSingleton(contractSerializer);
         }
 
         return services;
