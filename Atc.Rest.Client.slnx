@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Atc.Rest.Client/Atc.Rest.Client.csproj" />
+  <Project Path="test/Atc.Rest.Client.Tests/Atc.Rest.Client.Tests.csproj" />
+</Solution>
