@@ -53,4 +53,12 @@ public class DefaultJsonContractSerializer : IContractSerializer
             utf8Json,
             returnType,
             options);
+
+    public IAsyncEnumerable<T?> DeserializeAsyncEnumerable<T>(
+        Stream stream,
+        CancellationToken cancellationToken = default)
+        => JsonSerializer.DeserializeAsyncEnumerable<T>(
+            stream,
+            options,
+            cancellationToken);
 }
