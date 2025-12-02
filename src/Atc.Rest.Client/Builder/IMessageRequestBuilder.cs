@@ -57,4 +57,42 @@ public interface IMessageRequestBuilder
     /// <param name="method">The <see cref="HttpMethod"/> to use in the request.</param>
     /// <returns>The created <see cref="HttpRequestMessage"/>.</returns>
     HttpRequestMessage Build(HttpMethod method);
+
+    /// <summary>
+    /// Sets the HTTP completion option for the request.
+    /// Use <see cref="HttpCompletionOption.ResponseHeadersRead"/> for streaming scenarios.
+    /// </summary>
+    /// <param name="completionOption">The HTTP completion option.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithHttpCompletionOption(HttpCompletionOption completionOption);
+
+    /// <summary>
+    /// Gets the HTTP completion option set for this request.
+    /// </summary>
+    HttpCompletionOption HttpCompletionOption { get; }
+
+    /// <summary>
+    /// Adds a file to the multipart form data content.
+    /// </summary>
+    /// <param name="stream">The file stream to upload.</param>
+    /// <param name="name">The form field name.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="contentType">Optional content type. Defaults to application/octet-stream.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);
+
+    /// <summary>
+    /// Adds multiple files to the multipart form data content.
+    /// </summary>
+    /// <param name="files">Collection of files with Stream, Name, FileName, and optional ContentType.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithFiles(IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files);
+
+    /// <summary>
+    /// Adds a form field to the multipart form data content.
+    /// </summary>
+    /// <param name="name">The form field name.</param>
+    /// <param name="value">The form field value.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithFormField(string name, string value);
 }

@@ -7,6 +7,8 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private readonly Dictionary<string, string> pathMapper;
     private readonly Dictionary<string, string> headerMapper;
     private readonly Dictionary<string, string> queryMapper;
+    private readonly Dictionary<string, string> formFields;
+    private readonly List<(Stream Stream, string Name, string FileName, string? ContentType)> streamFiles;
     private string? content;
     private List<IFormFile>? contentFormFiles;
 
@@ -19,8 +21,13 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         pathMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         headerMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         queryMapper = new Dictionary<string, string>(StringComparer.Ordinal);
+        formFields = new Dictionary<string, string>(StringComparer.Ordinal);
+        streamFiles = [];
         WithHeaderParameter("accept", "application/json");
     }
+
+    /// <inheritdoc />
+    public HttpCompletionOption HttpCompletionOption { get; private set; } = HttpCompletionOption.ResponseContentRead;
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "OK - ByteArrayContent can't be disposed.")]
     public HttpRequestMessage Build(
@@ -39,6 +46,28 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         {
             message.Content = new StringContent(content);
             message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+        }
+        else if (streamFiles.Count > 0 || formFields.Count > 0)
+        {
+            var formDataContent = new MultipartFormDataContent();
+
+            foreach (var formField in formFields)
+            {
+                formDataContent.Add(new StringContent(formField.Value), formField.Key);
+            }
+
+            foreach (var file in streamFiles)
+            {
+                var streamContent = new StreamContent(file.Stream);
+                if (file.ContentType is not null)
+                {
+                    streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(file.ContentType);
+                }
+
+                formDataContent.Add(streamContent, file.Name, file.FileName);
+            }
+
+            message.Content = formDataContent;
         }
         else if (contentFormFiles is not null)
         {
@@ -208,4 +237,70 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         => pair.Key.StartsWith("#", StringComparison.Ordinal)
             ? $"{pair.Key.Replace("#", string.Empty)}={pair.Value}"
             : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
+
+    public IMessageRequestBuilder WithFile(
+        Stream stream,
+        string name,
+        string fileName,
+        string? contentType = null)
+    {
+        if (stream is null)
+        {
+            throw new ArgumentNullException(nameof(stream));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            throw new ArgumentException($"'{nameof(fileName)}' cannot be null or whitespace", nameof(fileName));
+        }
+
+        streamFiles.Add((stream, name, fileName, contentType));
+        return this;
+    }
+
+    public IMessageRequestBuilder WithFiles(
+        IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files)
+    {
+        if (files is null)
+        {
+            throw new ArgumentNullException(nameof(files));
+        }
+
+        foreach (var file in files)
+        {
+            WithFile(file.Stream, file.Name, file.FileName, file.ContentType);
+        }
+
+        return this;
+    }
+
+    public IMessageRequestBuilder WithFormField(
+        string name,
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        formFields[name] = value;
+        return this;
+    }
+
+    public IMessageRequestBuilder WithHttpCompletionOption(
+        HttpCompletionOption completionOption)
+    {
+        HttpCompletionOption = completionOption;
+        return this;
+    }
 }

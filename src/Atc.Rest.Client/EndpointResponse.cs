@@ -4,7 +4,7 @@ public class EndpointResponse : IEndpointResponse
 {
     public EndpointResponse(EndpointResponse response)
         : this(
-            response?.IsSuccess ?? throw new System.ArgumentNullException(nameof(response)),
+            response?.IsSuccess ?? throw new ArgumentNullException(nameof(response)),
             response.StatusCode,
             response.Content,
             response.ContentObject,

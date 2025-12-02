@@ -109,6 +109,78 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             r => new EndpointResponse<TSuccessContent, TErrorContent>(r),
             cancellationToken);
 
+    public async Task<BinaryEndpointResponse> BuildBinaryResponseAsync(
+        CancellationToken cancellationToken)
+    {
+        if (response is null)
+        {
+            return new BinaryEndpointResponse(
+                isSuccess: false,
+                HttpStatusCode.InternalServerError,
+                content: null,
+                contentType: null,
+                fileName: null,
+                contentLength: null);
+        }
+
+        var content = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
+        var contentLength = response.Content.Headers.ContentLength;
+
+        return new BinaryEndpointResponse(
+            response.IsSuccessStatusCode,
+            response.StatusCode,
+            content,
+            contentType,
+            fileName,
+            contentLength);
+    }
+
+    public async Task<StreamBinaryEndpointResponse> BuildStreamBinaryResponseAsync(
+        CancellationToken cancellationToken)
+    {
+        if (response is null)
+        {
+            return new StreamBinaryEndpointResponse(
+                isSuccess: false,
+                HttpStatusCode.InternalServerError,
+                contentStream: null,
+                contentType: null,
+                fileName: null,
+                contentLength: null);
+        }
+
+        var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
+        var contentLength = response.Content.Headers.ContentLength;
+
+        return new StreamBinaryEndpointResponse(
+            response.IsSuccessStatusCode,
+            response.StatusCode,
+            contentStream,
+            contentType,
+            fileName,
+            contentLength);
+    }
+
+    public async IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (response is null || !response.IsSuccessStatusCode)
+        {
+            yield break;
+        }
+
+        var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+
+        await foreach (var item in serializer.DeserializeAsyncEnumerable<T>(stream, cancellationToken).ConfigureAwait(false))
+        {
+            yield return item;
+        }
+    }
+
     private static bool UseReadAsStringFromContentDependingOnContentType(
         MediaTypeHeaderValue? headersContentType)
         => headersContentType?.MediaType is null ||
