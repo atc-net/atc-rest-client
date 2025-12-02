@@ -1,1 +1,1 @@
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Atc.Rest.Client.Tests")]
+[assembly: InternalsVisibleTo("Atc.Rest.Client.Tests")]
