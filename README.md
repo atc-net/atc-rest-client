@@ -12,13 +12,17 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
   - [Getting Started](#getting-started)
     - [Installation](#installation)
     - [Service Registration](#service-registration)
-      - [Approach 1: Direct Configuration (Recommended for Simple Cases)](#approach-1-direct-configuration-recommended-for-simple-cases)
-      - [Approach 2: Custom Options Type](#approach-2-custom-options-type)
+      - [Approach 1: Simple Registration (No HttpClient Configuration)](#approach-1-simple-registration-no-httpclient-configuration)
+      - [Approach 2: Direct Configuration](#approach-2-direct-configuration)
+      - [Approach 3: Custom Options Type](#approach-3-custom-options-type)
     - [Creating an Endpoint](#creating-an-endpoint)
   - [Usage Examples](#usage-examples)
     - [Simple GET Request](#simple-get-request)
     - [POST Request with Body](#post-request-with-body)
     - [Using Path and Query Parameters](#using-path-and-query-parameters)
+    - [File Upload (Multipart Form Data)](#file-upload-multipart-form-data)
+    - [File Download (Binary Response)](#file-download-binary-response)
+    - [Streaming Responses (IAsyncEnumerable)](#streaming-responses-iasyncenumerable)
     - [Handling Responses](#handling-responses)
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
@@ -33,6 +37,8 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [`IMessageRequestBuilder`](#imessagerequestbuilder)
       - [`IMessageResponseBuilder`](#imessageresponsebuilder)
       - [`EndpointResponse`](#endpointresponse)
+      - [`BinaryEndpointResponse`](#binaryendpointresponse)
+      - [`StreamBinaryEndpointResponse`](#streambinaryendpointresponse)
   - [How to Contribute](#how-to-contribute)
 
 ## Features
@@ -45,6 +51,10 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
 - **Query & Header Parameters**: Easy addition of query strings and headers
 - **Custom Serialization**: Pluggable contract serialization (defaults to JSON)
 - **Response Processing**: Built-in support for success/error response handling
+- **Multipart Form Data**: File upload support with Stream-based API
+- **Binary Responses**: Handle file downloads with byte[] or Stream responses
+- **Streaming Support**: IAsyncEnumerable streaming for large datasets
+- **HTTP Completion Options**: Control response buffering for streaming scenarios
 
 ## Getting Started
 
@@ -58,9 +68,23 @@ dotnet add package Atc.Rest.Client
 
 ### Service Registration
 
-There are two ways to register an HTTP client with dependency injection:
+There are multiple ways to register services with dependency injection:
 
-#### Approach 1: Direct Configuration (Recommended for Simple Cases)
+#### Approach 1: Simple Registration (No HttpClient Configuration)
+
+Use this approach when you configure HttpClient separately or use source-generated endpoints:
+
+```csharp
+using Atc.Rest.Client.Options;
+
+// Registers IHttpMessageFactory and IContractSerializer only
+services.AddAtcRestClient();
+
+// Or with a custom serializer
+services.AddAtcRestClient(myCustomSerializer);
+```
+
+#### Approach 2: Direct Configuration
 
 Use this approach when you have straightforward configuration needs:
 
@@ -73,7 +97,7 @@ services.AddAtcRestClient(
     timeout: TimeSpan.FromSeconds(30));
 ```
 
-#### Approach 2: Custom Options Type
+#### Approach 3: Custom Options Type
 
 Use this approach when you need to register the options as a singleton for later retrieval:
 
@@ -204,6 +228,101 @@ using var request = requestBuilder.Build(HttpMethod.Get);
 // Results in: GET /api/users/123/posts?pageSize=10&page=1&orderBy=createdDate
 ```
 
+### File Upload (Multipart Form Data)
+
+Upload files using the Stream-based multipart form data API:
+
+```csharp
+// Single file upload
+await using var fileStream = File.OpenRead("document.pdf");
+
+var requestBuilder = messageFactory.FromTemplate("/api/files/upload");
+requestBuilder.WithFile(fileStream, "file", "document.pdf", "application/pdf");
+requestBuilder.WithFormField("description", "My document");
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+using var response = await client.SendAsync(request, cancellationToken);
+```
+
+Upload multiple files:
+
+```csharp
+await using var file1 = File.OpenRead("image1.png");
+await using var file2 = File.OpenRead("image2.png");
+
+var files = new List<(Stream, string, string, string?)>
+{
+    (file1, "images", "image1.png", "image/png"),
+    (file2, "images", "image2.png", "image/png")
+};
+
+var requestBuilder = messageFactory.FromTemplate("/api/files/upload-multiple");
+requestBuilder.WithFiles(files);
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+```
+
+### File Download (Binary Response)
+
+Download files as byte arrays or streams:
+
+```csharp
+var requestBuilder = messageFactory.FromTemplate("/api/files/{fileId}");
+requestBuilder.WithPathParameter("fileId", "123");
+
+using var request = requestBuilder.Build(HttpMethod.Get);
+using var response = await client.SendAsync(request, cancellationToken);
+
+var responseBuilder = messageFactory.FromResponse(response);
+
+// Option 1: Get as byte array
+var binaryResponse = await responseBuilder.BuildBinaryResponseAsync(cancellationToken);
+if (binaryResponse.IsSuccess)
+{
+    var content = binaryResponse.Content;
+    var fileName = binaryResponse.FileName;
+    var contentType = binaryResponse.ContentType;
+    // Save or process the file...
+}
+
+// Option 2: Get as stream (for large files)
+var streamResponse = await responseBuilder.BuildStreamBinaryResponseAsync(cancellationToken);
+if (streamResponse.IsSuccess)
+{
+    await using var contentStream = streamResponse.ContentStream;
+    await using var fileStream = File.Create(streamResponse.FileName ?? "download.bin");
+    await contentStream!.CopyToAsync(fileStream, cancellationToken);
+}
+```
+
+### Streaming Responses (IAsyncEnumerable)
+
+Stream large datasets efficiently using IAsyncEnumerable:
+
+```csharp
+var requestBuilder = messageFactory.FromTemplate("/api/data/stream");
+
+// Set HttpCompletionOption for streaming (don't buffer the entire response)
+requestBuilder.WithHttpCompletionOption(HttpCompletionOption.ResponseHeadersRead);
+
+using var request = requestBuilder.Build(HttpMethod.Get);
+using var response = await client.SendAsync(
+    request,
+    requestBuilder.HttpCompletionOption,  // Use the configured option
+    cancellationToken);
+
+var responseBuilder = messageFactory.FromResponse(response);
+
+// Stream items as they arrive
+await foreach (var item in responseBuilder.BuildStreamingResponseAsync<DataItem>(cancellationToken))
+{
+    if (item is not null)
+    {
+        Console.WriteLine($"Received: {item.Name}");
+    }
+}
+```
+
 ### Handling Responses
 
 #### Success and Error Response Handling
@@ -275,7 +394,20 @@ services.AddAtcRestClient("Payments-API", new Uri("https://payments.api.com"), T
 #### `AddAtcRestClient` Extension Methods
 
 ```csharp
-// Non-generic overload for simple scenarios
+// Simple registration (no HttpClient configuration)
+IServiceCollection AddAtcRestClient(this IServiceCollection services)
+
+// With custom serializer
+IServiceCollection AddAtcRestClient(
+    this IServiceCollection services,
+    IContractSerializer contractSerializer)
+
+// With configuration action
+IServiceCollection AddAtcRestClient(
+    this IServiceCollection services,
+    Action<AtcRestClientOptions> configure)
+
+// With HttpClient configuration
 IServiceCollection AddAtcRestClient(
     string clientName,
     Uri baseAddress,
@@ -322,6 +454,15 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithHeaderParameter(string name, object? value);
     IMessageRequestBuilder WithBody<TBody>(TBody body);
     HttpRequestMessage Build(HttpMethod method);
+
+    // HTTP completion option for streaming
+    IMessageRequestBuilder WithHttpCompletionOption(HttpCompletionOption completionOption);
+    HttpCompletionOption HttpCompletionOption { get; }
+
+    // Multipart form data support
+    IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);
+    IMessageRequestBuilder WithFiles(IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files);
+    IMessageRequestBuilder WithFormField(string name, string value);
 }
 ```
 
@@ -347,6 +488,13 @@ public interface IMessageResponseBuilder
         CancellationToken cancellationToken)
         where TSuccessContent : class
         where TErrorContent : class;
+
+    // Binary response support
+    Task<BinaryEndpointResponse> BuildBinaryResponseAsync(CancellationToken cancellationToken);
+    Task<StreamBinaryEndpointResponse> BuildStreamBinaryResponseAsync(CancellationToken cancellationToken);
+
+    // Streaming support
+    IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(CancellationToken cancellationToken = default);
 }
 ```
 
@@ -365,6 +513,38 @@ public class EndpointResponse : IEndpointResponse
 // Generic variants available:
 // - EndpointResponse<TSuccess>
 // - EndpointResponse<TSuccess, TError>
+```
+
+#### `BinaryEndpointResponse`
+
+```csharp
+public class BinaryEndpointResponse
+{
+    public bool IsSuccess { get; }
+    public bool IsOk { get; }  // True if StatusCode == 200
+    public HttpStatusCode StatusCode { get; }
+    public byte[]? Content { get; }
+    public string? ContentType { get; }
+    public string? FileName { get; }
+    public long? ContentLength { get; }
+}
+```
+
+#### `StreamBinaryEndpointResponse`
+
+```csharp
+public class StreamBinaryEndpointResponse : IDisposable
+{
+    public bool IsSuccess { get; }
+    public bool IsOk { get; }  // True if StatusCode == 200
+    public HttpStatusCode StatusCode { get; }
+    public Stream? ContentStream { get; }
+    public string? ContentType { get; }
+    public string? FileName { get; }
+    public long? ContentLength { get; }
+
+    public void Dispose();
+}
 ```
 
 ## How to Contribute
