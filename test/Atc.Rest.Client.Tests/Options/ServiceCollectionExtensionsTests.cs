@@ -1,8 +1,5 @@
 namespace Atc.Rest.Client.Tests.Options;
 
-using Atc.Rest.Client.Options;
-using Microsoft.Extensions.DependencyInjection;
-
 public sealed class ServiceCollectionExtensionsTests
 {
     [Fact]
