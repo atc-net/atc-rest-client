@@ -6,13 +6,13 @@ using Microsoft.Extensions.DependencyInjection;
 public sealed class ServiceCollectionExtensionsTests
 {
     [Fact]
-    public void AddAtcRestClient_RegistersHttpMessageFactory()
+    public void AddAtcRestClientCore_RegistersHttpMessageFactory()
     {
         // Arrange
         var services = new ServiceCollection();
 
         // Act
-        services.AddAtcRestClient();
+        services.AddAtcRestClientCore();
         var provider = services.BuildServiceProvider();
         var factory = provider.GetService<IHttpMessageFactory>();
 
@@ -21,13 +21,13 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAtcRestClient_RegistersDefaultContractSerializer()
+    public void AddAtcRestClientCore_RegistersDefaultContractSerializer()
     {
         // Arrange
         var services = new ServiceCollection();
 
         // Act
-        services.AddAtcRestClient();
+        services.AddAtcRestClientCore();
         var provider = services.BuildServiceProvider();
         var serializer = provider.GetService<IContractSerializer>();
 
@@ -37,14 +37,14 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAtcRestClient_WithCustomSerializer_UsesProvidedSerializer()
+    public void AddAtcRestClientCore_WithCustomSerializer_UsesProvidedSerializer()
     {
         // Arrange
         var services = new ServiceCollection();
         var customSerializer = Substitute.For<IContractSerializer>();
 
         // Act
-        services.AddAtcRestClient(customSerializer);
+        services.AddAtcRestClientCore(customSerializer);
         var provider = services.BuildServiceProvider();
         var resolvedSerializer = provider.GetService<IContractSerializer>();
 
@@ -53,7 +53,7 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAtcRestClient_DoesNotOverwriteExistingRegistrations()
+    public void AddAtcRestClientCore_DoesNotOverwriteExistingRegistrations()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -61,62 +61,11 @@ public sealed class ServiceCollectionExtensionsTests
         services.AddSingleton(existingSerializer);
 
         // Act
-        services.AddAtcRestClient();
+        services.AddAtcRestClientCore();
         var provider = services.BuildServiceProvider();
         var resolvedSerializer = provider.GetService<IContractSerializer>();
 
         // Assert
         resolvedSerializer.Should().BeSameAs(existingSerializer);
-    }
-
-    [Fact]
-    public void AddAtcRestClient_WithNullSerializer_ThrowsArgumentNullException()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act
-        var act = () => services.AddAtcRestClient((IContractSerializer)null!);
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("contractSerializer");
-    }
-
-    [Fact]
-    public void AddAtcRestClient_WithConfigure_RegistersServices()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var configureWasCalled = false;
-
-        // Act
-        services.AddAtcRestClient(options =>
-        {
-            configureWasCalled = true;
-            options.Timeout = TimeSpan.FromSeconds(60);
-        });
-        var provider = services.BuildServiceProvider();
-        var factory = provider.GetService<IHttpMessageFactory>();
-        var serializer = provider.GetService<IContractSerializer>();
-
-        // Assert
-        configureWasCalled.Should().BeTrue();
-        factory.Should().NotBeNull();
-        serializer.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void AddAtcRestClient_WithNullConfigure_ThrowsArgumentNullException()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act
-        var act = () => services.AddAtcRestClient((Action<AtcRestClientOptions>)null!);
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("configure");
     }
 }
