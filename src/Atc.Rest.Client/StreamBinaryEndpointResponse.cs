@@ -3,7 +3,7 @@ namespace Atc.Rest.Client;
 /// <summary>
 /// Represents a streaming binary response from an endpoint.
 /// </summary>
-public class StreamBinaryEndpointResponse : IDisposable
+public sealed class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
 {
     private bool disposed;
 
@@ -80,7 +80,7 @@ public class StreamBinaryEndpointResponse : IDisposable
     /// Disposes managed resources.
     /// </summary>
     /// <param name="disposing">Whether to dispose managed resources.</param>
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (disposed)
         {
