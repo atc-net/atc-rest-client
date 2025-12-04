@@ -12,7 +12,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
   - [Getting Started](#getting-started)
     - [Installation](#installation)
     - [Service Registration](#service-registration)
-      - [Approach 1: Simple Registration (No HttpClient Configuration)](#approach-1-simple-registration-no-httpclient-configuration)
+      - [Approach 1: Core Services Only (No HttpClient Configuration)](#approach-1-core-services-only-no-httpclient-configuration)
       - [Approach 2: Direct Configuration](#approach-2-direct-configuration)
       - [Approach 3: Custom Options Type](#approach-3-custom-options-type)
     - [Creating an Endpoint](#creating-an-endpoint)
@@ -70,18 +70,18 @@ dotnet add package Atc.Rest.Client
 
 There are multiple ways to register services with dependency injection:
 
-#### Approach 1: Simple Registration (No HttpClient Configuration)
+#### Approach 1: Core Services Only (No HttpClient Configuration)
 
 Use this approach when you configure HttpClient separately or use source-generated endpoints:
 
 ```csharp
 using Atc.Rest.Client.Options;
 
-// Registers IHttpMessageFactory and IContractSerializer only
-services.AddAtcRestClient();
+// Registers IHttpMessageFactory and IContractSerializer (default JSON) only
+services.AddAtcRestClientCore();
 
 // Or with a custom serializer
-services.AddAtcRestClient(myCustomSerializer);
+services.AddAtcRestClientCore(myCustomSerializer);
 ```
 
 #### Approach 2: Direct Configuration
@@ -391,24 +391,24 @@ services.AddAtcRestClient("Payments-API", new Uri("https://payments.api.com"), T
 
 ### Core Types
 
-#### `AddAtcRestClient` Extension Methods
+#### `AddAtcRestClientCore` Extension Method
+
+Registers core services (`IHttpMessageFactory` and `IContractSerializer`) without HttpClient configuration:
 
 ```csharp
-// Simple registration (no HttpClient configuration)
-IServiceCollection AddAtcRestClient(this IServiceCollection services)
-
-// With custom serializer
-IServiceCollection AddAtcRestClient(
+IServiceCollection AddAtcRestClientCore(
     this IServiceCollection services,
-    IContractSerializer contractSerializer)
+    IContractSerializer? contractSerializer = null)
+```
 
-// With configuration action
-IServiceCollection AddAtcRestClient(
-    this IServiceCollection services,
-    Action<AtcRestClientOptions> configure)
+#### `AddAtcRestClient` Extension Methods (Internal)
 
+These methods are used by source-generated code and are hidden from IntelliSense:
+
+```csharp
 // With HttpClient configuration
 IServiceCollection AddAtcRestClient(
+    this IServiceCollection services,
     string clientName,
     Uri baseAddress,
     TimeSpan timeout,
@@ -417,6 +417,7 @@ IServiceCollection AddAtcRestClient(
 
 // Generic overload for typed options
 IServiceCollection AddAtcRestClient<TOptions>(
+    this IServiceCollection services,
     string clientName,
     TOptions options,
     Action<IHttpClientBuilder>? httpClientBuilder = null,

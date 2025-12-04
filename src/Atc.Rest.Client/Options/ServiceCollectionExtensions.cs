@@ -7,60 +7,35 @@ public static class ServiceCollectionExtensions
     /// without HttpClient configuration.
     /// </summary>
     /// <param name="services">The service collection.</param>
+    /// <param name="contractSerializer">Optional custom contract serializer. If null, uses DefaultJsonContractSerializer.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddAtcRestClient(
-        this IServiceCollection services)
-    {
-        services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
-        services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-        return services;
-    }
-
-    /// <summary>
-    /// Registers the core Atc.Rest.Client services with a custom contract serializer.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="contractSerializer">The custom contract serializer to use.</param>
-    /// <returns>The service collection for chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="contractSerializer"/> is null.</exception>
-    public static IServiceCollection AddAtcRestClient(
+    public static IServiceCollection AddAtcRestClientCore(
         this IServiceCollection services,
-        IContractSerializer contractSerializer)
+        IContractSerializer? contractSerializer = null)
     {
         if (contractSerializer is null)
         {
-            throw new ArgumentNullException(nameof(contractSerializer));
+            services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
+        }
+        else
+        {
+            services.TryAddSingleton(contractSerializer);
         }
 
-        services.TryAddSingleton(contractSerializer);
         services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
         return services;
     }
 
     /// <summary>
-    /// Registers the core Atc.Rest.Client services with configuration options.
+    /// Registers a named HttpClient with the specified options and core Atc.Rest.Client services.
     /// </summary>
+    /// <typeparam name="TOptions">The type of options, must inherit from <see cref="AtcRestClientOptions"/>.</typeparam>
     /// <param name="services">The service collection.</param>
-    /// <param name="configure">The configuration action for AtcRestClientOptions.</param>
+    /// <param name="clientName">The name of the HttpClient to register.</param>
+    /// <param name="options">The options containing BaseAddress and Timeout configuration.</param>
+    /// <param name="httpClientBuilder">Optional action to further configure the HttpClient.</param>
+    /// <param name="contractSerializer">Optional custom contract serializer. If null, uses DefaultJsonContractSerializer.</param>
     /// <returns>The service collection for chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure"/> is null.</exception>
-    public static IServiceCollection AddAtcRestClient(
-        this IServiceCollection services,
-        Action<AtcRestClientOptions> configure)
-    {
-        if (configure is null)
-        {
-            throw new ArgumentNullException(nameof(configure));
-        }
-
-        var options = new AtcRestClientOptions();
-        configure(options);
-
-        services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
-        services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-        return services;
-    }
-
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static IServiceCollection AddAtcRestClient<TOptions>(
         this IServiceCollection services,
@@ -78,20 +53,19 @@ public static class ServiceCollectionExtensions
 
         httpClientBuilder?.Invoke(clientBuilder);
 
-        // Register utilities
-        services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-        if (contractSerializer is null)
-        {
-            services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
-        }
-        else
-        {
-            services.TryAddSingleton(contractSerializer);
-        }
-
-        return services;
+        return services.AddAtcRestClientCore(contractSerializer);
     }
 
+    /// <summary>
+    /// Registers a named HttpClient with the specified base address, timeout, and core Atc.Rest.Client services.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="clientName">The name of the HttpClient to register.</param>
+    /// <param name="baseAddress">The base address for the HttpClient.</param>
+    /// <param name="timeout">The timeout for the HttpClient.</param>
+    /// <param name="httpClientBuilder">Optional action to further configure the HttpClient.</param>
+    /// <param name="contractSerializer">Optional custom contract serializer. If null, uses DefaultJsonContractSerializer.</param>
+    /// <returns>The service collection for chaining.</returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static IServiceCollection AddAtcRestClient(
         this IServiceCollection services,
@@ -109,17 +83,6 @@ public static class ServiceCollectionExtensions
 
         httpClientBuilder?.Invoke(clientBuilder);
 
-        // Register utilities
-        services.TryAddSingleton<IHttpMessageFactory, HttpMessageFactory>();
-        if (contractSerializer is null)
-        {
-            services.TryAddSingleton<IContractSerializer, DefaultJsonContractSerializer>();
-        }
-        else
-        {
-            services.TryAddSingleton(contractSerializer);
-        }
-
-        return services;
+        return services.AddAtcRestClientCore(contractSerializer);
     }
 }
