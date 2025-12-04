@@ -4,7 +4,7 @@ namespace Atc.Rest.Client;
 /// Represents a binary file response from an endpoint.
 /// </summary>
 [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Binary content requires array for practical usage.")]
-public class BinaryEndpointResponse
+public sealed class BinaryEndpointResponse : IBinaryEndpointResponse
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="BinaryEndpointResponse"/> class.
