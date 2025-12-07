@@ -39,8 +39,21 @@ public class EndpointResponse : IEndpointResponse
 
     protected TResult CastContent<TResult>()
         where TResult : class
+        => ContentObject as TResult ??
+           throw new InvalidCastException($"ContentObject is not of type {typeof(TResult).Name}");
+
+    protected InvalidOperationException InvalidContentAccessException<TExpected>(
+        HttpStatusCode expectedStatusCode,
+        string propertyName)
+        where TExpected : class
     {
-        return ContentObject as TResult ??
-               throw new InvalidCastException($"ContentObject is not of type {typeof(TResult).Name}");
+        var actualType = ContentObject?.GetType().Name ?? "null";
+        var expectedType = typeof(TExpected).Name;
+
+        return new InvalidOperationException(
+            $"Cannot access {propertyName}. " +
+            $"Expected status {(int)expectedStatusCode} ({expectedStatusCode}) with {expectedType} content, " +
+            $"but got {(int)StatusCode} ({StatusCode}) with {actualType} content. " +
+            $"Response: {Content}");
     }
 }

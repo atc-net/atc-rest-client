@@ -31,7 +31,8 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [Multiple Client Registration](#multiple-client-registration)
   - [API Reference](#api-reference)
     - [Core Types](#core-types)
-      - [`AddAtcRestClient` Extension Methods](#addatcrestclient-extension-methods)
+      - [`AddAtcRestClientCore` Extension Method](#addatcrestclientcore-extension-method)
+      - [`AddAtcRestClient` Extension Methods (Internal)](#addatcrestclient-extension-methods-internal)
       - [`AtcRestClientOptions`](#atcrestclientoptions)
       - [`IHttpMessageFactory`](#ihttpmessagefactory)
       - [`IMessageRequestBuilder`](#imessagerequestbuilder)
@@ -505,10 +506,18 @@ public interface IMessageResponseBuilder
 public class EndpointResponse : IEndpointResponse
 {
     public bool IsSuccess { get; }
+
     public HttpStatusCode StatusCode { get; }
+
     public string Content { get; }
+
     public object? ContentObject { get; }
+
     public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
+
+    protected InvalidOperationException InvalidContentAccessException<TExpected>(
+        HttpStatusCode expectedStatusCode,
+        string propertyName);
 }
 
 // Generic variants available:
@@ -519,32 +528,52 @@ public class EndpointResponse : IEndpointResponse
 #### `BinaryEndpointResponse`
 
 ```csharp
-public class BinaryEndpointResponse
+public class BinaryEndpointResponse : IBinaryEndpointResponse
 {
     public bool IsSuccess { get; }
+
     public bool IsOk { get; }  // True if StatusCode == 200
+
     public HttpStatusCode StatusCode { get; }
+
     public byte[]? Content { get; }
+
     public string? ContentType { get; }
+
     public string? FileName { get; }
+
     public long? ContentLength { get; }
+
+    protected InvalidOperationException InvalidContentAccessException(
+        HttpStatusCode expectedStatusCode,
+        string propertyName);
 }
 ```
 
 #### `StreamBinaryEndpointResponse`
 
 ```csharp
-public class StreamBinaryEndpointResponse : IDisposable
+public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
 {
     public bool IsSuccess { get; }
+
     public bool IsOk { get; }  // True if StatusCode == 200
+
     public HttpStatusCode StatusCode { get; }
+
     public Stream? ContentStream { get; }
+
     public string? ContentType { get; }
+
     public string? FileName { get; }
+
     public long? ContentLength { get; }
 
     public void Dispose();
+
+    protected InvalidOperationException InvalidContentAccessException(
+        HttpStatusCode expectedStatusCode,
+        string propertyName);
 }
 ```
 

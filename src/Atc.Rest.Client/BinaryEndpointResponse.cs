@@ -4,7 +4,7 @@ namespace Atc.Rest.Client;
 /// Represents a binary file response from an endpoint.
 /// </summary>
 [SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Binary content requires array for practical usage.")]
-public sealed class BinaryEndpointResponse : IBinaryEndpointResponse
+public class BinaryEndpointResponse : IBinaryEndpointResponse
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="BinaryEndpointResponse"/> class.
@@ -65,4 +65,18 @@ public sealed class BinaryEndpointResponse : IBinaryEndpointResponse
     /// Gets the content length.
     /// </summary>
     public long? ContentLength { get; }
+
+    /// <summary>
+    /// Creates an exception for invalid content access with detailed error information.
+    /// </summary>
+    /// <param name="expectedStatusCode">The expected HTTP status code.</param>
+    /// <param name="propertyName">The name of the property being accessed.</param>
+    /// <returns>An <see cref="InvalidOperationException"/> with detailed error information.</returns>
+    protected InvalidOperationException InvalidContentAccessException(
+        HttpStatusCode expectedStatusCode,
+        string propertyName)
+        => new(
+            $"Cannot access {propertyName}. " +
+            $"Expected status {(int)expectedStatusCode} ({expectedStatusCode}), " +
+            $"but got {(int)StatusCode} ({StatusCode}).");
 }

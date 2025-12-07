@@ -3,7 +3,7 @@ namespace Atc.Rest.Client;
 /// <summary>
 /// Represents a streaming binary response from an endpoint.
 /// </summary>
-public sealed class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
+public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
 {
     private bool disposed;
 
@@ -77,10 +77,24 @@ public sealed class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
     }
 
     /// <summary>
+    /// Creates an exception for invalid content access with detailed error information.
+    /// </summary>
+    /// <param name="expectedStatusCode">The expected HTTP status code.</param>
+    /// <param name="propertyName">The name of the property being accessed.</param>
+    /// <returns>An <see cref="InvalidOperationException"/> with detailed error information.</returns>
+    protected InvalidOperationException InvalidContentAccessException(
+        HttpStatusCode expectedStatusCode,
+        string propertyName)
+        => new(
+            $"Cannot access {propertyName}. " +
+            $"Expected status {(int)expectedStatusCode} ({expectedStatusCode}), " +
+            $"but got {(int)StatusCode} ({StatusCode}).");
+
+    /// <summary>
     /// Disposes managed resources.
     /// </summary>
     /// <param name="disposing">Whether to dispose managed resources.</param>
-    private void Dispose(bool disposing)
+    protected virtual void Dispose(bool disposing)
     {
         if (disposed)
         {
