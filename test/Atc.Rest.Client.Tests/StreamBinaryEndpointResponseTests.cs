@@ -3,6 +3,65 @@ namespace Atc.Rest.Client.Tests;
 public sealed class StreamBinaryEndpointResponseTests
 {
     [Fact]
+    public void InvalidContentAccessException_ContainsExpectedStatusCode()
+    {
+        // Arrange
+        using var sut = new TestableStreamBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException(HttpStatusCode.OK, "OKContent");
+
+        // Assert
+        exception.Message.Should().Contain("200");
+        exception.Message.Should().Contain("OK");
+    }
+
+    [Fact]
+    public void InvalidContentAccessException_ContainsActualStatusCode()
+    {
+        // Arrange
+        using var sut = new TestableStreamBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException(HttpStatusCode.OK, "OKContent");
+
+        // Assert
+        exception.Message.Should().Contain("409");
+        exception.Message.Should().Contain("Conflict");
+    }
+
+    [Fact]
+    public void InvalidContentAccessException_ContainsPropertyName()
+    {
+        // Arrange
+        using var sut = new TestableStreamBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException(HttpStatusCode.OK, "OKContent");
+
+        // Assert
+        exception.Message.Should().Contain("OKContent");
+    }
+
+    [Fact]
     public void Constructor_SetsAllProperties()
     {
         // Arrange
@@ -66,5 +125,24 @@ public sealed class StreamBinaryEndpointResponseTests
 
         // Assert - first dispose already happens via using, this is the second
         act.Should().NotThrow();
+    }
+
+    private sealed class TestableStreamBinaryEndpointResponse : StreamBinaryEndpointResponse
+    {
+        public TestableStreamBinaryEndpointResponse(
+            bool isSuccess,
+            HttpStatusCode statusCode,
+            Stream? contentStream,
+            string? contentType,
+            string? fileName,
+            long? contentLength)
+            : base(isSuccess, statusCode, contentStream, contentType, fileName, contentLength)
+        {
+        }
+
+        public InvalidOperationException GetInvalidContentAccessException(
+            HttpStatusCode expectedStatusCode,
+            string propertyName)
+            => InvalidContentAccessException(expectedStatusCode, propertyName);
     }
 }

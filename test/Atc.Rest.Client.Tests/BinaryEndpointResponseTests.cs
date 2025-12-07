@@ -3,6 +3,65 @@ namespace Atc.Rest.Client.Tests;
 public sealed class BinaryEndpointResponseTests
 {
     [Fact]
+    public void InvalidContentAccessException_ContainsExpectedStatusCode()
+    {
+        // Arrange
+        var sut = new TestableBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            content: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException(HttpStatusCode.OK, "OKContent");
+
+        // Assert
+        exception.Message.Should().Contain("200");
+        exception.Message.Should().Contain("OK");
+    }
+
+    [Fact]
+    public void InvalidContentAccessException_ContainsActualStatusCode()
+    {
+        // Arrange
+        var sut = new TestableBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            content: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException(HttpStatusCode.OK, "OKContent");
+
+        // Assert
+        exception.Message.Should().Contain("409");
+        exception.Message.Should().Contain("Conflict");
+    }
+
+    [Fact]
+    public void InvalidContentAccessException_ContainsPropertyName()
+    {
+        // Arrange
+        var sut = new TestableBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            content: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException(HttpStatusCode.OK, "OKContent");
+
+        // Assert
+        exception.Message.Should().Contain("OKContent");
+    }
+
+    [Fact]
     public void Constructor_SetsAllProperties()
     {
         // Arrange
@@ -61,5 +120,24 @@ public sealed class BinaryEndpointResponseTests
         sut.ContentType.Should().BeNull();
         sut.FileName.Should().BeNull();
         sut.ContentLength.Should().BeNull();
+    }
+
+    private sealed class TestableBinaryEndpointResponse : BinaryEndpointResponse
+    {
+        public TestableBinaryEndpointResponse(
+            bool isSuccess,
+            HttpStatusCode statusCode,
+            byte[]? content,
+            string? contentType,
+            string? fileName,
+            long? contentLength)
+            : base(isSuccess, statusCode, content, contentType, fileName, contentLength)
+        {
+        }
+
+        public InvalidOperationException GetInvalidContentAccessException(
+            HttpStatusCode expectedStatusCode,
+            string propertyName)
+            => InvalidContentAccessException(expectedStatusCode, propertyName);
     }
 }
