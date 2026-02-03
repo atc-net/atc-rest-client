@@ -56,4 +56,16 @@ public interface IMessageResponseBuilder
     /// <returns>An async enumerable of deserialized items, or an empty enumerable if the response is null or failed.</returns>
     IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds a streaming endpoint response that manages the HTTP response lifecycle.
+    /// </summary>
+    /// <remarks>
+    /// The caller is responsible for disposing the returned response after consuming the stream.
+    /// </remarks>
+    /// <typeparam name="T">The type of items to deserialize.</typeparam>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A <see cref="StreamingEndpointResponse{T}"/> containing the streaming content.</returns>
+    Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        CancellationToken cancellationToken = default);
 }
