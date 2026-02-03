@@ -1,35 +1,35 @@
 [![NuGet Version](https://img.shields.io/nuget/v/Atc.Rest.Client.svg?logo=nuget&style=for-the-badge)](https://www.nuget.org/packages/atc.rest.client)
 
-# ATC.Net REST Client
+# 🌐 ATC.Net REST Client
 
 A lightweight and flexible REST client library for .NET, providing a clean abstraction over HttpClient with built-in support for request building, response handling, and dependency injection.
 
-## Table of Contents
+## 📚 Table of Contents
 
-- [ATC.Net REST Client](#atcnet-rest-client)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Getting Started](#getting-started)
-    - [Installation](#installation)
-    - [Service Registration](#service-registration)
+- [🌐 ATC.Net REST Client](#-atcnet-rest-client)
+  - [📚 Table of Contents](#-table-of-contents)
+  - [✨ Features](#-features)
+  - [🚀 Getting Started](#-getting-started)
+    - [📦 Installation](#-installation)
+    - [⚙️ Service Registration](#️-service-registration)
       - [Approach 1: Core Services Only (No HttpClient Configuration)](#approach-1-core-services-only-no-httpclient-configuration)
       - [Approach 2: Direct Configuration](#approach-2-direct-configuration)
       - [Approach 3: Custom Options Type](#approach-3-custom-options-type)
-    - [Creating an Endpoint](#creating-an-endpoint)
-  - [Usage Examples](#usage-examples)
-    - [Simple GET Request](#simple-get-request)
-    - [POST Request with Body](#post-request-with-body)
-    - [Using Path and Query Parameters](#using-path-and-query-parameters)
-    - [File Upload (Multipart Form Data)](#file-upload-multipart-form-data)
-    - [File Download (Binary Response)](#file-download-binary-response)
-    - [Streaming Responses (IAsyncEnumerable)](#streaming-responses-iasyncenumerable)
-    - [Handling Responses](#handling-responses)
+    - [🔌 Creating an Endpoint](#-creating-an-endpoint)
+  - [💡 Usage Examples](#-usage-examples)
+    - [📥 Simple GET Request](#-simple-get-request)
+    - [📤 POST Request with Body](#-post-request-with-body)
+    - [🔗 Using Path and Query Parameters](#-using-path-and-query-parameters)
+    - [📎 File Upload (Multipart Form Data)](#-file-upload-multipart-form-data)
+    - [💾 File Download (Binary Response)](#-file-download-binary-response)
+    - [🌊 Streaming Responses (IAsyncEnumerable)](#-streaming-responses-iasyncenumerable)
+    - [📋 Handling Responses](#-handling-responses)
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
-  - [Best Practices](#best-practices)
+  - [💎 Best Practices](#-best-practices)
     - [Choosing Between Overloads](#choosing-between-overloads)
     - [Multiple Client Registration](#multiple-client-registration)
-  - [API Reference](#api-reference)
+  - [📖 API Reference](#-api-reference)
     - [Core Types](#core-types)
       - [`AddAtcRestClientCore` Extension Method](#addatcrestclientcore-extension-method)
       - [`AddAtcRestClient` Extension Methods (Internal)](#addatcrestclient-extension-methods-internal)
@@ -40,26 +40,27 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [`EndpointResponse`](#endpointresponse)
       - [`BinaryEndpointResponse`](#binaryendpointresponse)
       - [`StreamBinaryEndpointResponse`](#streambinaryendpointresponse)
-  - [How to Contribute](#how-to-contribute)
+      - [`StreamingEndpointResponse<T>`](#streamingendpointresponset)
+  - [🤝 How to Contribute](#-how-to-contribute)
 
-## Features
+## ✨ Features
 
-- **Fluent HTTP Request Building**: Build complex HTTP requests with a clean, chainable API
-- **Typed Response Handling**: Strongly-typed success and error responses
-- **Flexible Configuration**: Multiple ways to configure HTTP clients
-- **Dependency Injection Ready**: Seamless integration with Microsoft.Extensions.DependencyInjection
-- **Path Templates**: Support for URI templates with parameter replacement
-- **Query & Header Parameters**: Easy addition of query strings and headers
-- **Custom Serialization**: Pluggable contract serialization (defaults to JSON)
-- **Response Processing**: Built-in support for success/error response handling
-- **Multipart Form Data**: File upload support with Stream-based API
-- **Binary Responses**: Handle file downloads with byte[] or Stream responses
-- **Streaming Support**: IAsyncEnumerable streaming for large datasets
-- **HTTP Completion Options**: Control response buffering for streaming scenarios
+- 🔗 **Fluent HTTP Request Building**: Build complex HTTP requests with a clean, chainable API
+- 📦 **Typed Response Handling**: Strongly-typed success and error responses
+- ⚙️ **Flexible Configuration**: Multiple ways to configure HTTP clients
+- 💉 **Dependency Injection Ready**: Seamless integration with Microsoft.Extensions.DependencyInjection
+- 🏷️ **Path Templates**: Support for URI templates with parameter replacement
+- 🔍 **Query & Header Parameters**: Easy addition of query strings and headers
+- 🔄 **Custom Serialization**: Pluggable contract serialization (defaults to JSON)
+- ✅ **Response Processing**: Built-in support for success/error response handling
+- 📎 **Multipart Form Data**: File upload support with Stream-based API
+- 💾 **Binary Responses**: Handle file downloads with byte[] or Stream responses
+- 🌊 **Streaming Support**: IAsyncEnumerable streaming for large datasets with proper lifecycle management
+- ⏱️ **HTTP Completion Options**: Control response buffering for streaming scenarios
 
-## Getting Started
+## 🚀 Getting Started
 
-### Installation
+### 📦 Installation
 
 Install the package via NuGet:
 
@@ -67,7 +68,7 @@ Install the package via NuGet:
 dotnet add package Atc.Rest.Client
 ```
 
-### Service Registration
+### ⚙️ Service Registration
 
 There are multiple ways to register services with dependency injection:
 
@@ -122,7 +123,7 @@ services.AddAtcRestClient(
     options: options);
 ```
 
-### Creating an Endpoint
+### 🔌 Creating an Endpoint
 
 Create an endpoint class that uses `IHttpMessageFactory` to build and send requests:
 
@@ -172,9 +173,9 @@ Register the endpoint:
 services.AddSingleton<IUsersEndpoint, UsersEndpoint>();
 ```
 
-## Usage Examples
+## 💡 Usage Examples
 
-### Simple GET Request
+### 📥 Simple GET Request
 
 ```csharp
 var requestBuilder = messageFactory.FromTemplate("/api/products");
@@ -190,11 +191,11 @@ var result = await responseBuilder.BuildResponseAsync<List<Product>>(cancellatio
 if (result.IsSuccess)
 {
     var products = result.OkContent;
-    // Process products
+    // Process products 🎉
 }
 ```
 
-### POST Request with Body
+### 📤 POST Request with Body
 
 ```csharp
 var newUser = new CreateUserRequest
@@ -216,7 +217,7 @@ responseBuilder.AddErrorResponse<ValidationProblemDetails>(HttpStatusCode.BadReq
 var result = await responseBuilder.BuildResponseAsync<User>(cancellationToken);
 ```
 
-### Using Path and Query Parameters
+### 🔗 Using Path and Query Parameters
 
 ```csharp
 var requestBuilder = messageFactory.FromTemplate("/api/users/{userId}/posts");
@@ -229,7 +230,7 @@ using var request = requestBuilder.Build(HttpMethod.Get);
 // Results in: GET /api/users/123/posts?pageSize=10&page=1&orderBy=createdDate
 ```
 
-### File Upload (Multipart Form Data)
+### 📎 File Upload (Multipart Form Data)
 
 Upload files using the Stream-based multipart form data API:
 
@@ -263,7 +264,7 @@ requestBuilder.WithFiles(files);
 using var request = requestBuilder.Build(HttpMethod.Post);
 ```
 
-### File Download (Binary Response)
+### 💾 File Download (Binary Response)
 
 Download files as byte arrays or streams:
 
@@ -276,7 +277,7 @@ using var response = await client.SendAsync(request, cancellationToken);
 
 var responseBuilder = messageFactory.FromResponse(response);
 
-// Option 1: Get as byte array
+// Option 1: Get as byte array 📦
 var binaryResponse = await responseBuilder.BuildBinaryResponseAsync(cancellationToken);
 if (binaryResponse.IsSuccess)
 {
@@ -286,7 +287,7 @@ if (binaryResponse.IsSuccess)
     // Save or process the file...
 }
 
-// Option 2: Get as stream (for large files)
+// Option 2: Get as stream (for large files) 🌊
 var streamResponse = await responseBuilder.BuildStreamBinaryResponseAsync(cancellationToken);
 if (streamResponse.IsSuccess)
 {
@@ -296,25 +297,27 @@ if (streamResponse.IsSuccess)
 }
 ```
 
-### Streaming Responses (IAsyncEnumerable)
+### 🌊 Streaming Responses (IAsyncEnumerable)
 
-Stream large datasets efficiently using IAsyncEnumerable:
+Stream large datasets efficiently using IAsyncEnumerable. There are two approaches:
+
+#### Option 1: Simple Streaming (Basic Usage)
+
+Use `BuildStreamingResponseAsync<T>` for simple streaming scenarios:
 
 ```csharp
 var requestBuilder = messageFactory.FromTemplate("/api/data/stream");
-
-// Set HttpCompletionOption for streaming (don't buffer the entire response)
 requestBuilder.WithHttpCompletionOption(HttpCompletionOption.ResponseHeadersRead);
 
 using var request = requestBuilder.Build(HttpMethod.Get);
 using var response = await client.SendAsync(
     request,
-    requestBuilder.HttpCompletionOption,  // Use the configured option
+    requestBuilder.HttpCompletionOption,
     cancellationToken);
 
 var responseBuilder = messageFactory.FromResponse(response);
 
-// Stream items as they arrive
+// ⚠️ Note: The response must stay alive during enumeration
 await foreach (var item in responseBuilder.BuildStreamingResponseAsync<DataItem>(cancellationToken))
 {
     if (item is not null)
@@ -324,7 +327,52 @@ await foreach (var item in responseBuilder.BuildStreamingResponseAsync<DataItem>
 }
 ```
 
-### Handling Responses
+#### Option 2: Managed Lifecycle Streaming (Recommended) ✨
+
+Use `BuildStreamingEndpointResponseAsync<T>` for proper lifecycle management. This approach wraps the streaming content in a disposable response that manages the `HttpResponseMessage` lifecycle:
+
+```csharp
+var requestBuilder = messageFactory.FromTemplate("/api/data/stream");
+requestBuilder.WithHttpCompletionOption(HttpCompletionOption.ResponseHeadersRead);
+
+using var request = requestBuilder.Build(HttpMethod.Get);
+
+// Don't use 'using' here - the StreamingEndpointResponse will manage the lifecycle
+var response = await client.SendAsync(
+    request,
+    requestBuilder.HttpCompletionOption,
+    cancellationToken);
+
+var responseBuilder = messageFactory.FromResponse(response);
+
+// 🎯 The response manages HttpResponseMessage disposal
+using var streamingResponse = await responseBuilder.BuildStreamingEndpointResponseAsync<DataItem>(cancellationToken);
+
+if (streamingResponse.IsSuccess && streamingResponse.Content is not null)
+{
+    await foreach (var item in streamingResponse.Content.WithCancellation(cancellationToken))
+    {
+        if (item is not null)
+        {
+            Console.WriteLine($"✅ Received: {item.Name}");
+        }
+    }
+}
+else
+{
+    // Handle error - error content is available
+    Console.WriteLine($"❌ Error: {streamingResponse.ErrorContent}");
+}
+// HttpResponseMessage is automatically disposed here 🧹
+```
+
+> 💡 **Why use `BuildStreamingEndpointResponseAsync`?**
+> - ✅ Proper lifecycle management - the `HttpResponseMessage` is disposed when you dispose the response
+> - ✅ Error handling - access to `ErrorContent` when the request fails
+> - ✅ Status code information - check `IsSuccess`, `IsOk`, and `StatusCode`
+> - ✅ Avoids premature disposal - no risk of disposing the response before enumeration completes
+
+### 📋 Handling Responses
 
 #### Success and Error Response Handling
 
@@ -339,16 +387,16 @@ var result = await responseBuilder.BuildResponseAsync<User, ProblemDetails>(canc
 if (result.IsOk)
 {
     var user = result.OkContent;
-    Console.WriteLine($"Success: {user.Name}");
+    Console.WriteLine($"✅ Success: {user.Name}");
 }
 else if (result.IsBadRequest)
 {
     var problem = result.BadRequestContent;
-    Console.WriteLine($"Validation Error: {problem.Detail}");
+    Console.WriteLine($"⚠️ Validation Error: {problem.Detail}");
 }
 else if (result.IsNotFound)
 {
-    Console.WriteLine("User not found");
+    Console.WriteLine("❌ User not found");
 }
 ```
 
@@ -368,7 +416,7 @@ var result = await responseBuilder.BuildResponseAsync(
     cancellationToken);
 ```
 
-## Best Practices
+## 💎 Best Practices
 
 ### Choosing Between Overloads
 
@@ -382,13 +430,13 @@ var result = await responseBuilder.BuildResponseAsync(
 When registering multiple HTTP clients, consider using a consistent naming convention:
 
 ```csharp
-// Good: Clear, distinct names
+// ✅ Good: Clear, distinct names
 services.AddAtcRestClient("Users-API", new Uri("https://users.api.com"), TimeSpan.FromSeconds(30));
 services.AddAtcRestClient("Orders-API", new Uri("https://orders.api.com"), TimeSpan.FromSeconds(60));
 services.AddAtcRestClient("Payments-API", new Uri("https://payments.api.com"), TimeSpan.FromSeconds(45));
 ```
 
-## API Reference
+## 📖 API Reference
 
 ### Core Types
 
@@ -491,12 +539,13 @@ public interface IMessageResponseBuilder
         where TSuccessContent : class
         where TErrorContent : class;
 
-    // Binary response support
+    // 💾 Binary response support
     Task<BinaryEndpointResponse> BuildBinaryResponseAsync(CancellationToken cancellationToken);
     Task<StreamBinaryEndpointResponse> BuildStreamBinaryResponseAsync(CancellationToken cancellationToken);
 
-    // Streaming support
+    // 🌊 Streaming support
     IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(CancellationToken cancellationToken = default);
+    Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(CancellationToken cancellationToken = default);
 }
 ```
 
@@ -532,7 +581,7 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
 {
     public bool IsSuccess { get; }
 
-    public bool IsOk { get; }  // True if StatusCode == 200
+    public bool IsOk { get; }  // ✅ True if StatusCode == 200
 
     public HttpStatusCode StatusCode { get; }
 
@@ -553,11 +602,11 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
 #### `StreamBinaryEndpointResponse`
 
 ```csharp
-public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
+public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse, IDisposable
 {
     public bool IsSuccess { get; }
 
-    public bool IsOk { get; }  // True if StatusCode == 200
+    public bool IsOk { get; }  // ✅ True if StatusCode == 200
 
     public HttpStatusCode StatusCode { get; }
 
@@ -577,7 +626,38 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
 }
 ```
 
-## How to Contribute
+#### `StreamingEndpointResponse<T>`
+
+A disposable response type for streaming `IAsyncEnumerable<T>` content with proper lifecycle management:
+
+```csharp
+public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>, IDisposable
+{
+    public bool IsSuccess { get; }
+
+    public bool IsOk { get; }  // ✅ True if StatusCode == 200
+
+    public HttpStatusCode StatusCode { get; }
+
+    public IAsyncEnumerable<T?>? Content { get; }  // 🌊 The streaming content
+
+    public string? ErrorContent { get; }  // ❌ Error message if request failed
+
+    public void Dispose();  // 🧹 Disposes the underlying HttpResponseMessage
+
+    protected InvalidOperationException InvalidContentAccessException(
+        HttpStatusCode expectedStatusCode,
+        string propertyName);
+}
+```
+
+> 💡 **Key Benefits:**
+> - Manages `HttpResponseMessage` lifecycle automatically
+> - Provides `ErrorContent` when the request fails
+> - Prevents premature disposal during enumeration
+> - Inheritable for custom response types
+
+## 🤝 How to Contribute
 
 [Contribution Guidelines](https://atc-net.github.io/introduction/about-atc#how-to-contribute)
 
