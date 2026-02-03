@@ -56,7 +56,10 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
         {
-            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var content = await response
+                .Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
 
             object? contentResponse = content;
             var contentSerializerDelegate = GetSerializer(response.StatusCode);
@@ -82,7 +85,10 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             return factory(endpointResponse);
         }
 
-        var contentObject = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var contentObject = await response
+            .Content
+            .ReadAsByteArrayAsync()
+            .ConfigureAwait(false);
 
         return factory(
             new EndpointResponse(
@@ -123,7 +129,11 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 contentLength: null);
         }
 
-        var content = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var content = await response
+            .Content
+            .ReadAsByteArrayAsync()
+            .ConfigureAwait(false);
+
         var contentType = response.Content.Headers.ContentType?.MediaType;
         var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
         var contentLength = response.Content.Headers.ContentLength;
@@ -151,7 +161,11 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 contentLength: null);
         }
 
-        var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        var contentStream = await response
+            .Content
+            .ReadAsStreamAsync()
+            .ConfigureAwait(false);
+
         var contentType = response.Content.Headers.ContentType?.MediaType;
         var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
         var contentLength = response.Content.Headers.ContentLength;
@@ -179,6 +193,49 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         {
             yield return item;
         }
+    }
+
+    public async Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        CancellationToken cancellationToken = default)
+    {
+        if (response is null)
+        {
+            return new StreamingEndpointResponse<T>(
+                isSuccess: false,
+                HttpStatusCode.InternalServerError,
+                content: null,
+                errorContent: null,
+                httpResponse: null);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response
+                .Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            return new StreamingEndpointResponse<T>(
+                isSuccess: false,
+                response.StatusCode,
+                content: null,
+                errorContent,
+                httpResponse: response);
+        }
+
+        var stream = await response
+            .Content
+            .ReadAsStreamAsync()
+            .ConfigureAwait(false);
+
+        var content = serializer.DeserializeAsyncEnumerable<T>(stream, cancellationToken);
+
+        return new StreamingEndpointResponse<T>(
+            isSuccess: true,
+            response.StatusCode,
+            content,
+            errorContent: null,
+            httpResponse: response);
     }
 
     private static bool UseReadAsStringFromContentDependingOnContentType(
@@ -221,7 +278,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode,
         bool isSuccess)
     {
-        responseSerializers[statusCode] = content => null;
+        responseSerializers[statusCode] = _ => null;
         responseCodes[statusCode] = isSuccess;
 
         return this;
