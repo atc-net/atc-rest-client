@@ -112,4 +112,39 @@ public sealed class RestClientDeserializationExceptionTests
         act.Should().Throw<Exception>()
             .Which.Should().BeOfType<RestClientDeserializationException>();
     }
+
+    [Fact]
+    public void FullConstructorWithTargetType_Should_Set_All_Properties()
+    {
+        const string message = "Deserialization failed";
+        var innerException = new JsonException("Invalid JSON");
+        const HttpStatusCode statusCode = HttpStatusCode.OK;
+        const string rawContent = "{invalid json}";
+        var targetType = typeof(string);
+
+        var exception = new RestClientDeserializationException(
+            message,
+            innerException,
+            statusCode,
+            rawContent,
+            targetType);
+
+        exception.Message.Should().Be(message);
+        exception.InnerException.Should().BeSameAs(innerException);
+        exception.StatusCode.Should().Be(statusCode);
+        exception.RawContent.Should().Be(rawContent);
+        exception.TargetType.Should().Be(targetType);
+    }
+
+    [Fact]
+    public void TargetType_Should_Be_Null_When_Not_Provided()
+    {
+        var exception = new RestClientDeserializationException(
+            "Error",
+            new JsonException("Invalid JSON"),
+            HttpStatusCode.OK,
+            "content");
+
+        exception.TargetType.Should().BeNull();
+    }
 }

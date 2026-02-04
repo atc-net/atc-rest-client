@@ -12,7 +12,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
     private readonly HttpResponseMessage? response;
     private readonly IContractSerializer serializer;
-    private readonly Dictionary<HttpStatusCode, ContentSerializerDelegate> responseSerializers;
+    private readonly Dictionary<HttpStatusCode, (ContentSerializerDelegate Serializer, Type TargetType)> responseSerializers;
     private readonly Dictionary<HttpStatusCode, bool> responseCodes;
 
     public MessageResponseBuilder(
@@ -61,20 +61,21 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 .ConfigureAwait(false);
 
             object? contentResponse = content;
-            var contentSerializerDelegate = GetSerializer(response.StatusCode);
-            if (contentSerializerDelegate is not null)
+            var serializerInfo = GetSerializer(response.StatusCode);
+            if (serializerInfo is not null)
             {
                 try
                 {
-                    contentResponse = contentSerializerDelegate.Invoke(content);
+                    contentResponse = serializerInfo.Value.Serializer.Invoke(content);
                 }
                 catch (Exception ex)
                 {
                     throw new RestClientDeserializationException(
-                        $"Failed to deserialize response content for status code {(int)response.StatusCode} ({response.StatusCode})",
+                        $"Failed to deserialize response content to {serializerInfo.Value.TargetType.Name} for status code {(int)response.StatusCode} ({response.StatusCode})",
                         ex,
                         response.StatusCode,
-                        content);
+                        content,
+                        serializerInfo.Value.TargetType);
                 }
             }
 
@@ -309,7 +310,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             ? isSuccess
             : responseMessage.IsSuccessStatusCode;
 
-    private ContentSerializerDelegate? GetSerializer(
+    private (ContentSerializerDelegate Serializer, Type TargetType)? GetSerializer(
         HttpStatusCode statusCode)
         => responseSerializers.TryGetValue(statusCode, out var deserializer)
             ? deserializer
@@ -319,7 +320,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode,
         bool isSuccess)
     {
-        responseSerializers[statusCode] = _ => null;
+        responseSerializers[statusCode] = (_ => null, typeof(object));
         responseCodes[statusCode] = isSuccess;
 
         return this;
@@ -328,9 +329,11 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private IMessageResponseBuilder AddTypedResponse<T>(
         HttpStatusCode statusCode, bool isSuccess)
     {
-        responseSerializers[statusCode] = content => string.IsNullOrWhiteSpace(content)
-            ? null
-            : serializer.Deserialize<T>(content);
+        responseSerializers[statusCode] = (
+            content => string.IsNullOrWhiteSpace(content)
+                ? null
+                : serializer.Deserialize<T>(content),
+            typeof(T));
         responseCodes[statusCode] = isSuccess;
 
         return this;

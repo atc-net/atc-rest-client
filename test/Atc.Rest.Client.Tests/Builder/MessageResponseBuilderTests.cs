@@ -309,6 +309,8 @@ public sealed class MessageResponseBuilderTests
         exception.Which.InnerException.Should().BeSameAs(innerException);
         exception.Which.Message.Should().Contain("200");
         exception.Which.Message.Should().Contain("OK");
+        exception.Which.TargetType.Should().Be(typeof(SuccessResponse));
+        exception.Which.Message.Should().Contain(nameof(SuccessResponse));
     }
 
     [Theory, AutoNSubstituteData]
@@ -333,6 +335,8 @@ public sealed class MessageResponseBuilderTests
         var exception = await act.Should().ThrowAsync<RestClientDeserializationException>();
         exception.Which.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         exception.Which.RawContent.Should().Be("{malformed}");
+        exception.Which.TargetType.Should().Be(typeof(BadResponse));
+        exception.Which.Message.Should().Contain(nameof(BadResponse));
     }
 
     [Theory, AutoNSubstituteData]
