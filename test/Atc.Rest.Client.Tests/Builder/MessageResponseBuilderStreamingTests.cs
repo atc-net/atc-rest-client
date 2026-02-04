@@ -152,4 +152,124 @@ public sealed class MessageResponseBuilderStreamingTests
         result.IsSuccess.Should().Be(expectedSuccess);
         result.StatusCode.Should().Be(statusCode);
     }
+
+    [Fact]
+    public async Task BuildStreamingResponseAsync_NullResponse_ReturnsEmptyEnumerable()
+    {
+        // Arrange
+        var sut = CreateSut(response: null);
+
+        // Act
+        var items = new List<string?>();
+        await foreach (var item in sut.BuildStreamingResponseAsync<string>())
+        {
+            items.Add(item);
+        }
+
+        // Assert
+        items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BuildStreamingResponseAsync_FailedResponse_ReturnsEmptyEnumerable()
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("error"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var items = new List<string?>();
+        await foreach (var item in sut.BuildStreamingResponseAsync<string>())
+        {
+            items.Add(item);
+        }
+
+        // Assert
+        items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BuildStreamingResponseAsync_SuccessResponse_YieldsItems()
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("[\"a\",\"b\",\"c\"]"),
+        };
+
+        var expectedItems = new[] { "a", "b", "c" };
+        serializer
+            .DeserializeAsyncEnumerable<string>(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(expectedItems.ToAsyncEnumerable());
+
+        var sut = CreateSut(response);
+
+        // Act
+        var items = new List<string?>();
+        await foreach (var item in sut.BuildStreamingResponseAsync<string>())
+        {
+            items.Add(item);
+        }
+
+        // Assert
+        items.Should().BeEquivalentTo(expectedItems);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.Created)]
+    [InlineData(HttpStatusCode.Accepted)]
+    public async Task BuildStreamingResponseAsync_SuccessStatusCodes_YieldItems(HttpStatusCode statusCode)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(statusCode)
+        {
+            Content = new StringContent("[1]"),
+        };
+
+        serializer
+            .DeserializeAsyncEnumerable<int>(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { 42 }.ToAsyncEnumerable());
+
+        var sut = CreateSut(response);
+
+        // Act
+        var items = new List<int?>();
+        await foreach (var item in sut.BuildStreamingResponseAsync<int>())
+        {
+            items.Add(item);
+        }
+
+        // Assert
+        items.Should().ContainSingle().Which.Should().Be(42);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task BuildStreamingResponseAsync_ErrorStatusCodes_YieldNoItems(HttpStatusCode statusCode)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(statusCode)
+        {
+            Content = new StringContent("error"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var items = new List<int?>();
+        await foreach (var item in sut.BuildStreamingResponseAsync<int>())
+        {
+            items.Add(item);
+        }
+
+        // Assert
+        items.Should().BeEmpty();
+    }
 }

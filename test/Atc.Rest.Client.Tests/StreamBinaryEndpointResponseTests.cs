@@ -127,6 +127,61 @@ public sealed class StreamBinaryEndpointResponseTests
         act.Should().NotThrow();
     }
 
+    [Fact]
+    public void Dispose_WhenContentStreamIsNull_DoesNotThrow()
+    {
+        // Arrange
+        using var sut = new StreamBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.InternalServerError,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Act
+        var act = () => sut.Dispose();
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void IsOk_WhenStatusCodeIsNotOK_ReturnsFalse()
+    {
+        // Arrange & Act
+        using var sut = new StreamBinaryEndpointResponse(
+            isSuccess: true,
+            HttpStatusCode.Created,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Assert
+        sut.IsOk.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Constructor_WithNullValues_SetsPropertiesToNull()
+    {
+        // Arrange & Act
+        using var sut = new StreamBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.NotFound,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null);
+
+        // Assert
+        sut.IsSuccess.Should().BeFalse();
+        sut.ContentStream.Should().BeNull();
+        sut.ContentType.Should().BeNull();
+        sut.FileName.Should().BeNull();
+        sut.ContentLength.Should().BeNull();
+    }
+
     private sealed class TestableStreamBinaryEndpointResponse : StreamBinaryEndpointResponse
     {
         public TestableStreamBinaryEndpointResponse(
