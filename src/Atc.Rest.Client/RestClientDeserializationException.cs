@@ -50,6 +50,27 @@ public class RestClientDeserializationException : Exception
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="RestClientDeserializationException"/> class.
+    /// </summary>
+    /// <param name="message">The error message.</param>
+    /// <param name="innerException">The inner exception that caused deserialization to fail.</param>
+    /// <param name="statusCode">The HTTP status code of the response.</param>
+    /// <param name="rawContent">The raw content that failed to deserialize.</param>
+    /// <param name="targetType">The target type that deserialization was attempting to create.</param>
+    public RestClientDeserializationException(
+        string message,
+        Exception innerException,
+        HttpStatusCode statusCode,
+        string rawContent,
+        Type? targetType)
+        : base(message, innerException)
+    {
+        StatusCode = statusCode;
+        RawContent = rawContent;
+        TargetType = targetType;
+    }
+
+    /// <summary>
     /// Gets the HTTP status code of the response.
     /// </summary>
     public HttpStatusCode StatusCode { get; }
@@ -58,4 +79,9 @@ public class RestClientDeserializationException : Exception
     /// Gets the raw content that failed to deserialize.
     /// </summary>
     public string RawContent { get; } = string.Empty;
+
+    /// <summary>
+    /// Gets the target type that deserialization was attempting to create.
+    /// </summary>
+    public Type? TargetType { get; }
 }
