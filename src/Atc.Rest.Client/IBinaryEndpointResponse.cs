@@ -40,4 +40,9 @@ public interface IBinaryEndpointResponse
     /// Gets the content length.
     /// </summary>
     long? ContentLength { get; }
+
+    /// <summary>
+    /// Gets the error content if the request failed.
+    /// </summary>
+    string? ErrorContent { get; }
 }

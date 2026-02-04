@@ -80,14 +80,14 @@ public sealed class StreamBinaryEndpointResponseTests
         sut.IsSuccess.Should().BeTrue();
         sut.IsOk.Should().BeTrue();
         sut.StatusCode.Should().Be(HttpStatusCode.OK);
-        sut.ContentStream.Should().BeSameAs(stream);
+        sut.Content.Should().BeSameAs(stream);
         sut.ContentType.Should().Be("application/octet-stream");
         sut.FileName.Should().Be("test.bin");
         sut.ContentLength.Should().Be(3);
     }
 
     [Fact]
-    public void Dispose_DisposesContentStream()
+    public void Dispose_DisposesContent()
     {
         // Arrange
         var stream = new MemoryStream([1, 2, 3]);
@@ -128,7 +128,7 @@ public sealed class StreamBinaryEndpointResponseTests
     }
 
     [Fact]
-    public void Dispose_WhenContentStreamIsNull_DoesNotThrow()
+    public void Dispose_WhenContentIsNull_DoesNotThrow()
     {
         // Arrange
         using var sut = new StreamBinaryEndpointResponse(
@@ -176,10 +176,52 @@ public sealed class StreamBinaryEndpointResponseTests
 
         // Assert
         sut.IsSuccess.Should().BeFalse();
-        sut.ContentStream.Should().BeNull();
+        sut.Content.Should().BeNull();
         sut.ContentType.Should().BeNull();
         sut.FileName.Should().BeNull();
         sut.ContentLength.Should().BeNull();
+        sut.ErrorContent.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithErrorContent_SetsProperty()
+    {
+        // Arrange
+        const string errorContent = "Error: Not Found";
+
+        // Act
+        using var sut = new StreamBinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.NotFound,
+            contentStream: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null,
+            errorContent);
+
+        // Assert
+        sut.ErrorContent.Should().Be(errorContent);
+    }
+
+    [Fact]
+    public void ErrorContent_IsNull_WhenSuccessful()
+    {
+        // Arrange
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        // Act
+        using var sut = new StreamBinaryEndpointResponse(
+            isSuccess: true,
+            HttpStatusCode.OK,
+            stream,
+            "application/octet-stream",
+            "test.bin",
+            contentLength: 3,
+            errorContent: null);
+
+        // Assert
+        sut.IsSuccess.Should().BeTrue();
+        sut.ErrorContent.Should().BeNull();
     }
 
     private sealed class TestableStreamBinaryEndpointResponse : StreamBinaryEndpointResponse
