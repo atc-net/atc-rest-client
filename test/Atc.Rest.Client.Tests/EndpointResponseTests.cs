@@ -420,6 +420,61 @@ public class EndpointResponseTests
         sut.Content.Should().Be(expectedContent);
     }
 
+    [Fact]
+    public void IsOk_ReturnsTrue_WhenStatusCodeIsOK()
+    {
+        // Arrange & Act
+        var sut = new EndpointResponse(
+            isSuccess: true,
+            HttpStatusCode.OK,
+            string.Empty,
+            null,
+            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+
+        // Assert
+        sut.IsOk.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Created)]
+    [InlineData(HttpStatusCode.Accepted)]
+    [InlineData(HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public void IsOk_ReturnsFalse_WhenStatusCodeIsNotOK(HttpStatusCode statusCode)
+    {
+        // Arrange & Act
+        var sut = new EndpointResponse(
+            isSuccess: true,
+            statusCode,
+            string.Empty,
+            null,
+            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+
+        // Assert
+        sut.IsOk.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsOk_IsInheritedByDerivedTypes()
+    {
+        // Arrange
+        var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal);
+        var baseResponse = new EndpointResponse(
+            isSuccess: true,
+            HttpStatusCode.OK,
+            "content",
+            new SuccessResponse(),
+            headers);
+
+        // Act
+        var derived = new EndpointResponse<SuccessResponse>(baseResponse);
+
+        // Assert
+        derived.IsOk.Should().BeTrue();
+    }
+
     private sealed class TestableEndpointResponse : EndpointResponse
     {
         public TestableEndpointResponse(

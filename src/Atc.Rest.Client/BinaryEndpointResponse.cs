@@ -15,13 +15,15 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
     /// <param name="contentType">The content type.</param>
     /// <param name="fileName">The file name from Content-Disposition header.</param>
     /// <param name="contentLength">The content length.</param>
+    /// <param name="errorContent">The error content if the request failed.</param>
     public BinaryEndpointResponse(
         bool isSuccess,
         HttpStatusCode statusCode,
         byte[]? content,
         string? contentType,
         string? fileName,
-        long? contentLength)
+        long? contentLength,
+        string? errorContent = null)
     {
         IsSuccess = isSuccess;
         StatusCode = statusCode;
@@ -29,6 +31,7 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
         ContentType = contentType;
         FileName = fileName;
         ContentLength = contentLength;
+        ErrorContent = errorContent;
     }
 
     /// <summary>
@@ -65,6 +68,11 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
     /// Gets the content length.
     /// </summary>
     public long? ContentLength { get; }
+
+    /// <summary>
+    /// Gets the error content if the request failed.
+    /// </summary>
+    public string? ErrorContent { get; }
 
     /// <summary>
     /// Creates an exception for invalid content access with detailed error information.

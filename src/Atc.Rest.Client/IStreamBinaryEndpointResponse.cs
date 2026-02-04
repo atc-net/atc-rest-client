@@ -23,7 +23,7 @@ public interface IStreamBinaryEndpointResponse : IDisposable
     /// <summary>
     /// Gets the content stream.
     /// </summary>
-    Stream? ContentStream { get; }
+    Stream? Content { get; }
 
     /// <summary>
     /// Gets the content type.
@@ -39,4 +39,9 @@ public interface IStreamBinaryEndpointResponse : IDisposable
     /// Gets the content length.
     /// </summary>
     long? ContentLength { get; }
+
+    /// <summary>
+    /// Gets the error content if the request failed.
+    /// </summary>
+    string? ErrorContent { get; }
 }

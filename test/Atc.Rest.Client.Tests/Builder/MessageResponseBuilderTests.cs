@@ -43,13 +43,17 @@ public sealed class MessageResponseBuilderTests
 
     [Theory, AutoNSubstituteData]
     public async Task Should_Deserialize_Configured_SuccessResponseCode(
-        HttpResponseMessage response,
         Guid expectedResponse,
         CancellationToken cancellationToken)
     {
         serializer.Deserialize<Guid>(Arg.Any<string>()).Returns(expectedResponse);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+
         var sut = CreateSut(response);
-        response.StatusCode = HttpStatusCode.OK;
 
         var result = await sut.AddSuccessResponse<Guid>(response.StatusCode)
             .BuildResponseAsync(res => res, cancellationToken);
@@ -62,13 +66,17 @@ public sealed class MessageResponseBuilderTests
 
     [Theory, AutoNSubstituteData]
     public async Task Should_Deserialize_Configured_ErrorResponseCode(
-        HttpResponseMessage response,
         Guid expectedResponse,
         CancellationToken cancellationToken)
     {
         serializer.Deserialize<Guid>(Arg.Any<string>()).Returns(expectedResponse);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+
         var sut = CreateSut(response);
-        response.StatusCode = HttpStatusCode.BadRequest;
 
         var result = await sut.AddErrorResponse<Guid>(response.StatusCode)
             .BuildResponseAsync(res => res, cancellationToken);
@@ -105,13 +113,17 @@ public sealed class MessageResponseBuilderTests
 
     [Theory, AutoNSubstituteData]
     public async Task Should_SuccessContent_NotBeNull(
-        HttpResponseMessage response,
         SuccessResponse expectedResponse,
         CancellationToken cancellationToken)
     {
         serializer.Deserialize<SuccessResponse>(Arg.Any<string>()).Returns(expectedResponse);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+
         var sut = CreateSut(response);
-        response.StatusCode = HttpStatusCode.OK;
 
         var result = await sut.AddSuccessResponse<SuccessResponse>(response.StatusCode)
             .BuildResponseAsync<SuccessResponse>(cancellationToken);
@@ -143,13 +155,17 @@ public sealed class MessageResponseBuilderTests
 
     [Theory, AutoNSubstituteData]
     public async Task Should_FailureContent_NotBeNull(
-        HttpResponseMessage response,
         BadResponse expectedResponse,
         CancellationToken cancellationToken)
     {
         serializer.Deserialize<BadResponse>(Arg.Any<string>()).Returns(expectedResponse);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+
         var sut = CreateSut(response);
-        response.StatusCode = HttpStatusCode.BadRequest;
 
         var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
             .BuildResponseAsync<SuccessResponse, BadResponse>(cancellationToken);
@@ -486,6 +502,48 @@ public sealed class MessageResponseBuilderTests
     }
 
     [Theory, AutoNSubstituteData]
+    public async Task Should_Return_Null_ContentObject_For_Empty_Response_Body(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - empty response body (common for 401/403 errors)
+        using var response = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act - should not throw when deserializing empty body
+        var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - empty body should result in null content, not an exception
+        result.ContentObject.Should().BeNull();
+        result.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Return_Null_ContentObject_For_Whitespace_Response_Body(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - whitespace-only response body
+        using var response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = new StringContent("   \n\t  ", System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act - should not throw when deserializing whitespace body
+        var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - whitespace body should result in null content, not an exception
+        result.ContentObject.Should().BeNull();
+        result.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Theory, AutoNSubstituteData]
     public async Task Should_Include_Both_Response_And_Content_Headers(
         CancellationToken cancellationToken)
     {
@@ -556,6 +614,132 @@ public sealed class MessageResponseBuilderTests
         // Assert
         result.Should().NotBeNull();
         result.SuccessContent.Should().Be(expectedResponse);
+        result.ErrorContent.Should().BeNull();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildBinaryResponseAsync_FailedResponse_ReturnsErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        const string errorContent = "{\"error\":\"Not found\"}";
+        using var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent(errorContent, System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildBinaryResponseAsync(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        result.Content.Should().BeNull();
+        result.ErrorContent.Should().Be(errorContent);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildBinaryResponseAsync_SuccessfulResponse_HasNullErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        var binaryData = new byte[] { 0x89, 0x50, 0x4E, 0x47 };
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(binaryData),
+        };
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildBinaryResponseAsync(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Content.Should().BeEquivalentTo(binaryData);
+        result.ErrorContent.Should().BeNull();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildBinaryResponseAsync_NullResponse_HasNullErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        var sut = CreateSut(response: null);
+
+        // Act
+        var result = await sut.BuildBinaryResponseAsync(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        result.Content.Should().BeNull();
+        result.ErrorContent.Should().BeNull();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildStreamBinaryResponseAsync_FailedResponse_ReturnsErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        const string errorContent = "{\"error\":\"Forbidden\"}";
+        using var response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = new StringContent(errorContent, System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamBinaryResponseAsync(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        result.Content.Should().BeNull();
+        result.ErrorContent.Should().Be(errorContent);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildStreamBinaryResponseAsync_SuccessfulResponse_HasNullErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        var binaryData = new byte[] { 0x89, 0x50, 0x4E, 0x47 };
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(binaryData),
+        };
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamBinaryResponseAsync(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Content.Should().NotBeNull();
+        result.ErrorContent.Should().BeNull();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildStreamBinaryResponseAsync_NullResponse_HasNullErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        var sut = CreateSut(response: null);
+
+        // Act
+        using var result = await sut.BuildStreamBinaryResponseAsync(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        result.Content.Should().BeNull();
         result.ErrorContent.Should().BeNull();
     }
 }

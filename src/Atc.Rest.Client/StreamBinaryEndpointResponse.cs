@@ -16,20 +16,23 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
     /// <param name="contentType">The content type.</param>
     /// <param name="fileName">The file name from Content-Disposition header.</param>
     /// <param name="contentLength">The content length.</param>
+    /// <param name="errorContent">The error content if the request failed.</param>
     public StreamBinaryEndpointResponse(
         bool isSuccess,
         HttpStatusCode statusCode,
         Stream? contentStream,
         string? contentType,
         string? fileName,
-        long? contentLength)
+        long? contentLength,
+        string? errorContent = null)
     {
         IsSuccess = isSuccess;
         StatusCode = statusCode;
-        ContentStream = contentStream;
+        Content = contentStream;
         ContentType = contentType;
         FileName = fileName;
         ContentLength = contentLength;
+        ErrorContent = errorContent;
     }
 
     /// <summary>
@@ -50,7 +53,7 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
     /// <summary>
     /// Gets the content stream.
     /// </summary>
-    public Stream? ContentStream { get; }
+    public Stream? Content { get; }
 
     /// <summary>
     /// Gets the content type.
@@ -66,6 +69,11 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
     /// Gets the content length.
     /// </summary>
     public long? ContentLength { get; }
+
+    /// <summary>
+    /// Gets the error content if the request failed.
+    /// </summary>
+    public string? ErrorContent { get; }
 
     /// <summary>
     /// Disposes the content stream.
@@ -103,7 +111,7 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
 
         if (disposing)
         {
-            ContentStream?.Dispose();
+            Content?.Dispose();
         }
 
         disposed = true;

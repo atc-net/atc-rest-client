@@ -126,14 +126,14 @@ public sealed class MessageResponseBuilderBinaryTests
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
-        result.ContentStream.Should().BeNull();
+        result.Content.Should().BeNull();
         result.ContentType.Should().BeNull();
         result.FileName.Should().BeNull();
         result.ContentLength.Should().BeNull();
     }
 
     [Fact]
-    public async Task BuildStreamBinaryResponseAsync_SuccessResponse_ReturnsContentStream()
+    public async Task BuildStreamBinaryResponseAsync_SuccessResponse_ReturnsContent()
     {
         // Arrange
         var expectedContent = new byte[] { 1, 2, 3, 4, 5 };
@@ -151,12 +151,12 @@ public sealed class MessageResponseBuilderBinaryTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.StatusCode.Should().Be(HttpStatusCode.OK);
-        result.ContentStream.Should().NotBeNull();
+        result.Content.Should().NotBeNull();
         result.ContentType.Should().Be("image/png");
 
         // Verify stream content
         using var memoryStream = new MemoryStream();
-        await result.ContentStream!.CopyToAsync(memoryStream);
+        await result.Content!.CopyToAsync(memoryStream);
         memoryStream.ToArray().Should().BeEquivalentTo(expectedContent);
     }
 
@@ -242,13 +242,13 @@ public sealed class MessageResponseBuilderBinaryTests
 
         // Assert - read once
         using var ms1 = new MemoryStream();
-        await result.ContentStream!.CopyToAsync(ms1);
+        await result.Content!.CopyToAsync(ms1);
         ms1.ToArray().Should().BeEquivalentTo(expectedContent);
 
         // Reset and read again
-        result.ContentStream.Position = 0;
+        result.Content.Position = 0;
         using var ms2 = new MemoryStream();
-        await result.ContentStream.CopyToAsync(ms2);
+        await result.Content.CopyToAsync(ms2);
         ms2.ToArray().Should().BeEquivalentTo(expectedContent);
     }
 }

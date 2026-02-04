@@ -129,7 +129,25 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 content: null,
                 contentType: null,
                 fileName: null,
-                contentLength: null);
+                contentLength: null,
+                errorContent: null);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response
+                .Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            return new BinaryEndpointResponse(
+                isSuccess: false,
+                response.StatusCode,
+                content: null,
+                contentType: null,
+                fileName: null,
+                contentLength: null,
+                errorContent);
         }
 
         var content = await response
@@ -142,12 +160,13 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         var contentLength = response.Content.Headers.ContentLength;
 
         return new BinaryEndpointResponse(
-            response.IsSuccessStatusCode,
+            isSuccess: true,
             response.StatusCode,
             content,
             contentType,
             fileName,
-            contentLength);
+            contentLength,
+            errorContent: null);
     }
 
     public async Task<StreamBinaryEndpointResponse> BuildStreamBinaryResponseAsync(
@@ -161,7 +180,25 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 contentStream: null,
                 contentType: null,
                 fileName: null,
-                contentLength: null);
+                contentLength: null,
+                errorContent: null);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response
+                .Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            return new StreamBinaryEndpointResponse(
+                isSuccess: false,
+                response.StatusCode,
+                contentStream: null,
+                contentType: null,
+                fileName: null,
+                contentLength: null,
+                errorContent);
         }
 
         var contentStream = await response
@@ -174,12 +211,13 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         var contentLength = response.Content.Headers.ContentLength;
 
         return new StreamBinaryEndpointResponse(
-            response.IsSuccessStatusCode,
+            isSuccess: true,
             response.StatusCode,
             contentStream,
             contentType,
             fileName,
-            contentLength);
+            contentLength,
+            errorContent: null);
     }
 
     public async IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(
@@ -290,7 +328,9 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private IMessageResponseBuilder AddTypedResponse<T>(
         HttpStatusCode statusCode, bool isSuccess)
     {
-        responseSerializers[statusCode] = content => serializer.Deserialize<T>(content);
+        responseSerializers[statusCode] = content => string.IsNullOrWhiteSpace(content)
+            ? null
+            : serializer.Deserialize<T>(content);
         responseCodes[statusCode] = isSuccess;
 
         return this;

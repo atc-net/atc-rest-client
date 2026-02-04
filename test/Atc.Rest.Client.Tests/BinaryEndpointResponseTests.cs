@@ -120,6 +120,48 @@ public sealed class BinaryEndpointResponseTests
         sut.ContentType.Should().BeNull();
         sut.FileName.Should().BeNull();
         sut.ContentLength.Should().BeNull();
+        sut.ErrorContent.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithErrorContent_SetsProperty()
+    {
+        // Arrange
+        const string errorContent = "Error: Not Found";
+
+        // Act
+        var sut = new BinaryEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.NotFound,
+            content: null,
+            contentType: null,
+            fileName: null,
+            contentLength: null,
+            errorContent);
+
+        // Assert
+        sut.ErrorContent.Should().Be(errorContent);
+    }
+
+    [Fact]
+    public void ErrorContent_IsNull_WhenSuccessful()
+    {
+        // Arrange
+        var content = new byte[] { 1, 2, 3 };
+
+        // Act
+        var sut = new BinaryEndpointResponse(
+            isSuccess: true,
+            HttpStatusCode.OK,
+            content,
+            "application/octet-stream",
+            "test.bin",
+            contentLength: 3,
+            errorContent: null);
+
+        // Assert
+        sut.IsSuccess.Should().BeTrue();
+        sut.ErrorContent.Should().BeNull();
     }
 
     private sealed class TestableBinaryEndpointResponse : BinaryEndpointResponse
