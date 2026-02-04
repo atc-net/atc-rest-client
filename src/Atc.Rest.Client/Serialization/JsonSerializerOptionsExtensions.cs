@@ -1,7 +1,17 @@
 namespace Atc.Rest.Client.Serialization;
 
+/// <summary>
+/// Extension methods for <see cref="JsonSerializerOptions"/>.
+/// </summary>
 public static class JsonSerializerOptionsExtensions
 {
+    /// <summary>
+    /// Creates a copy of the JSON serializer options without the specified converters.
+    /// </summary>
+    /// <param name="source">The source options to copy.</param>
+    /// <param name="converters">The converters to exclude from the copy.</param>
+    /// <returns>A new <see cref="JsonSerializerOptions"/> instance without the specified converters.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> is null.</exception>
     public static JsonSerializerOptions WithoutConverter(
         this JsonSerializerOptions source,
         params JsonConverter[] converters)
@@ -33,4 +43,4 @@ public static class JsonSerializerOptionsExtensions
 
         return result;
     }
-}
+}
