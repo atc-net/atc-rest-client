@@ -2,7 +2,7 @@ namespace Atc.Rest.Client.Builder;
 
 /// <summary>
 /// Represents an HTTP message factory that can create both the <see cref="IMessageRequestBuilder"/>
-/// and <see cref="IMessageRequestBuilder"/>, used to provide input to
+/// and <see cref="IMessageResponseBuilder"/>, used to provide input to
 /// and processes responses from an HTTP exchange.
 /// </summary>
 public interface IHttpMessageFactory

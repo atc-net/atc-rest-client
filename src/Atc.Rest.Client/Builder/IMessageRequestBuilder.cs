@@ -38,6 +38,32 @@ public interface IMessageRequestBuilder
     /// <param name="value">Value of the query parameter.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithQueryParameter(string name, string? value);
+
+    /// <summary>
+    /// Adds a query parameter with multiple values to the created request URL.
+    /// </summary>
+    /// <remarks>
+    /// If the <paramref name="values"/> is null or empty, the query parameter is not added.
+    /// Each value in the collection will be added as a separate query parameter with the same name.
+    /// </remarks>
+    /// <param name="name">Name of the query parameter.</param>
+    /// <param name="values">Collection of values for the query parameter.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithQueryParameter(string name, IEnumerable? values);
+
+    /// <summary>
+    /// Adds a query parameter to the created request URL.
+    /// </summary>
+    /// <remarks>
+    /// If the <paramref name="value"/> is null, the query parameter is not added.
+    /// Supports special handling for enums (using EnumMemberAttribute), DateTime, and DateTimeOffset.
+    /// </remarks>
+    /// <param name="name">Name of the query parameter.</param>
+    /// <param name="value">Value of the query parameter.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
     IMessageRequestBuilder WithQueryParameter(string name, object? value);
 
     /// <summary>

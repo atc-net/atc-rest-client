@@ -31,6 +31,7 @@
     <Using Include="AutoFixture.Xunit3" />
     <Using Include="FluentAssertions" />
     <Using Include="NSubstitute" />
+    <Using Include="NSubstitute.ExceptionExtensions" />
     <Using Include="Xunit" />
   </ItemGroup>
 

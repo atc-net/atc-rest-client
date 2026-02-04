@@ -44,7 +44,6 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode)
         => AddTypedResponse<TResponseContent>(statusCode, isSuccess: true);
 
-    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "OK.")]
     public async Task<TResult> BuildResponseAsync<TResult>(
         Func<EndpointResponse, TResult> factory,
         CancellationToken cancellationToken)
@@ -69,9 +68,13 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 {
                     contentResponse = contentSerializerDelegate.Invoke(content);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Swallow
+                    throw new RestClientDeserializationException(
+                        $"Failed to deserialize response content for status code {(int)response.StatusCode} ({response.StatusCode})",
+                        ex,
+                        response.StatusCode,
+                        content);
                 }
             }
 
@@ -241,8 +244,8 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private static bool UseReadAsStringFromContentDependingOnContentType(
         MediaTypeHeaderValue? headersContentType)
         => headersContentType?.MediaType is null ||
-           headersContentType.MediaType.Contains("json") ||
-           headersContentType.MediaType.Contains("text");
+           headersContentType.MediaType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
+           headersContentType.MediaType.Contains("text", StringComparison.OrdinalIgnoreCase);
 
     private static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(
         HttpResponseMessage responseMessage)

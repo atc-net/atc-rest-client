@@ -275,6 +275,75 @@ public sealed class MessageRequestBuilderTests
             .Be($"/api?foo={values[0]}&foo={values[1]}&foo={values[2]}");
     }
 
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Omit_Query_Parameters_With_Empty_Array(
+        string template)
+    {
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("foo", Array.Empty<string>());
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Omit_Query_Parameters_With_Empty_List(
+        string template)
+    {
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("foo", new List<int>());
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Omit_Query_Parameters_With_Null_Collection(
+        string template)
+    {
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("foo", (System.Collections.IEnumerable?)null);
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Include_Other_Parameters_When_Empty_Collection_Is_Omitted(
+        string template)
+    {
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("foo", Array.Empty<string>());
+        sut.WithQueryParameter("bar", "value");
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api?bar=value");
+    }
+
     [Fact]
     public void WithBody_Throws_If_Parameter_Is_Null()
     {
