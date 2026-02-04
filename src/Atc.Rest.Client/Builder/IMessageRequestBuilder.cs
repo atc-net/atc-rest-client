@@ -52,6 +52,18 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithBody<TBody>(TBody body);
 
     /// <summary>
+    /// Adds a binary stream as the body of the request.
+    /// </summary>
+    /// <remarks>
+    /// Use this method for raw binary uploads (e.g., application/octet-stream).
+    /// The stream is sent directly without serialization.
+    /// </remarks>
+    /// <param name="stream">The stream to send as the request body.</param>
+    /// <param name="contentType">Optional content type. Defaults to application/octet-stream.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithBinaryBody(Stream stream, string? contentType = null);
+
+    /// <summary>
     /// Builds a <see cref="HttpRequestMessage"/> with the added content.
     /// </summary>
     /// <param name="method">The <see cref="HttpMethod"/> to use in the request.</param>

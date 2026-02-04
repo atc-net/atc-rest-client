@@ -11,6 +11,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private readonly List<(Stream Stream, string Name, string FileName, string? ContentType)> streamFiles;
     private string? content;
     private List<IFormFile>? contentFormFiles;
+    private (Stream Stream, string ContentType)? binaryContent;
 
     public MessageRequestBuilder(
         string pathTemplate,
@@ -30,8 +31,8 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     public HttpCompletionOption HttpCompletionOption { get; private set; } = HttpCompletionOption.ResponseContentRead;
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "OK - ByteArrayContent can't be disposed.")]
-    public HttpRequestMessage Build(
-        HttpMethod method)
+    [SuppressMessage("Design", "MA0051:Method is too long", Justification = "OK.")]
+    public HttpRequestMessage Build(HttpMethod method)
     {
         var message = new HttpRequestMessage();
         foreach (var parameter in headerMapper)
@@ -46,6 +47,12 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         {
             message.Content = new StringContent(content);
             message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+        }
+        else if (binaryContent.HasValue)
+        {
+            var streamContent = new StreamContent(binaryContent.Value.Stream);
+            streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(binaryContent.Value.ContentType);
+            message.Content = streamContent;
         }
         else if (streamFiles.Count > 0 || formFields.Count > 0)
         {
@@ -117,6 +124,19 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
                 break;
         }
 
+        return this;
+    }
+
+    public IMessageRequestBuilder WithBinaryBody(
+        Stream stream,
+        string? contentType = null)
+    {
+        if (stream is null)
+        {
+            throw new ArgumentNullException(nameof(stream));
+        }
+
+        binaryContent = (stream, contentType ?? "application/octet-stream");
         return this;
     }
 
