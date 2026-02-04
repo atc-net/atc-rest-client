@@ -21,8 +21,11 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [📤 POST Request with Body](#-post-request-with-body)
     - [🔗 Using Path and Query Parameters](#-using-path-and-query-parameters)
     - [📎 File Upload (Multipart Form Data)](#-file-upload-multipart-form-data)
+    - [📤 Binary Upload (Raw Stream)](#-binary-upload-raw-stream)
     - [💾 File Download (Binary Response)](#-file-download-binary-response)
     - [🌊 Streaming Responses (IAsyncEnumerable)](#-streaming-responses-iasyncenumerable)
+      - [Option 1: Simple Streaming (Basic Usage)](#option-1-simple-streaming-basic-usage)
+      - [Option 2: Managed Lifecycle Streaming (Recommended) ✨](#option-2-managed-lifecycle-streaming-recommended-)
     - [📋 Handling Responses](#-handling-responses)
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
@@ -37,6 +40,8 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [`IHttpMessageFactory`](#ihttpmessagefactory)
       - [`IMessageRequestBuilder`](#imessagerequestbuilder)
       - [`IMessageResponseBuilder`](#imessageresponsebuilder)
+    - [Response Status Properties](#response-status-properties)
+    - [Response Types](#response-types)
       - [`EndpointResponse`](#endpointresponse)
       - [`BinaryEndpointResponse`](#binaryendpointresponse)
       - [`StreamBinaryEndpointResponse`](#streambinaryendpointresponse)
@@ -191,7 +196,7 @@ var result = await responseBuilder.BuildResponseAsync<List<Product>>(cancellatio
 
 if (result.IsSuccess)
 {
-    var products = result.OkContent;
+    var products = result.SuccessContent;
     // Process products 🎉
 }
 ```
@@ -291,6 +296,7 @@ using var request = requestBuilder.Build(HttpMethod.Post);
 ```
 
 > 💡 **When to use `WithBinaryBody` vs `WithFile`:**
+>
 > - Use `WithBinaryBody` when the API expects raw binary data with `application/octet-stream` or similar content type
 > - Use `WithFile` when the API expects `multipart/form-data` format (typical file upload forms)
 
@@ -321,9 +327,9 @@ if (binaryResponse.IsSuccess)
 var streamResponse = await responseBuilder.BuildStreamBinaryResponseAsync(cancellationToken);
 if (streamResponse.IsSuccess)
 {
-    await using var contentStream = streamResponse.ContentStream;
+    await using var content = streamResponse.Content;
     await using var fileStream = File.Create(streamResponse.FileName ?? "download.bin");
-    await contentStream!.CopyToAsync(fileStream, cancellationToken);
+    await content!.CopyToAsync(fileStream, cancellationToken);
 }
 ```
 
@@ -397,6 +403,7 @@ else
 ```
 
 > 💡 **Why use `BuildStreamingEndpointResponseAsync`?**
+>
 > - ✅ Proper lifecycle management - the `HttpResponseMessage` is disposed when you dispose the response
 > - ✅ Error handling - access to `ErrorContent` when the request fails
 > - ✅ Status code information - check `IsSuccess`, `IsOk`, and `StatusCode`
@@ -414,19 +421,15 @@ responseBuilder.AddErrorResponse<ProblemDetails>(HttpStatusCode.NotFound);
 
 var result = await responseBuilder.BuildResponseAsync<User, ProblemDetails>(cancellationToken);
 
-if (result.IsOk)
+if (result.IsSuccess)
 {
-    var user = result.OkContent;
-    Console.WriteLine($"✅ Success: {user.Name}");
+    var user = result.SuccessContent;
+    Console.WriteLine($"✅ Success: {user!.Name}");
 }
-else if (result.IsBadRequest)
+else
 {
-    var problem = result.BadRequestContent;
-    Console.WriteLine($"⚠️ Validation Error: {problem.Detail}");
-}
-else if (result.IsNotFound)
-{
-    Console.WriteLine("❌ User not found");
+    var problem = result.ErrorContent;
+    Console.WriteLine($"❌ Error ({result.StatusCode}): {problem?.Detail}");
 }
 ```
 
@@ -450,10 +453,10 @@ var result = await responseBuilder.BuildResponseAsync(
 
 ### Choosing Between Overloads
 
-| Scenario | Recommended Approach |
-|----------|---------------------|
+| Scenario                                          | Recommended Approach                                                 |
+|---------------------------------------------------|----------------------------------------------------------------------|
 | Simple HTTP client with just base URL and timeout | **Non-generic overload** (`AddAtcRestClient(string, Uri, TimeSpan)`) |
-| Additional configuration properties needed | **Generic overload with custom options type** |
+| Additional configuration properties needed        | **Generic overload with custom options type**                        |
 
 ### Multiple Client Registration
 
@@ -582,12 +585,51 @@ public interface IMessageResponseBuilder
 }
 ```
 
+### Response Status Properties
+
+All response types provide two status properties for checking request outcomes:
+
+| Property    | Meaning                        | Determination                                       |
+|-------------|--------------------------------|-----------------------------------------------------|
+| `IsSuccess` | Request completed successfully | Based on HTTP 2xx status or configured status codes |
+| `IsOk`      | Status code is exactly 200     | `StatusCode == HttpStatusCode.OK`                   |
+
+**Examples:**
+
+| HTTP Status    | `IsSuccess` | `IsOk`     |
+|----------------|-------------|------------|
+| 200 OK         | ✅ `true`   | ✅ `true`  |
+| 201 Created    | ✅ `true`   | ❌ `false` |
+| 204 NoContent  | ✅ `true`   | ❌ `false` |
+| 400 BadRequest | ❌ `false`  | ❌ `false` |
+| 404 NotFound   | ❌ `false`  | ❌ `false` |
+
+**When to use each:**
+
+- **`IsSuccess`**: General success check — "Did the request succeed?"
+- **`IsOk`**: Specific status check — "Was the response exactly 200 OK?"
+
+All response types support both properties:
+
+| Type                                 | `IsSuccess` | `IsOk` |
+|--------------------------------------|-------------|--------|
+| `EndpointResponse`                   | ✅          | ✅     |
+| `EndpointResponse<TSuccess>`         | ✅          | ✅     |
+| `EndpointResponse<TSuccess, TError>` | ✅          | ✅     |
+| `BinaryEndpointResponse`             | ✅          | ✅     |
+| `StreamBinaryEndpointResponse`       | ✅          | ✅     |
+| `StreamingEndpointResponse<T>`       | ✅          | ✅     |
+
+### Response Types
+
 #### `EndpointResponse`
 
 ```csharp
 public class EndpointResponse : IEndpointResponse
 {
     public bool IsSuccess { get; }
+
+    public bool IsOk { get; }  // ✅ True if StatusCode == 200
 
     public HttpStatusCode StatusCode { get; }
 
@@ -626,6 +668,8 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
 
     public long? ContentLength { get; }
 
+    public string? ErrorContent { get; }  // Error message if request failed
+
     protected InvalidOperationException InvalidContentAccessException(
         HttpStatusCode expectedStatusCode,
         string propertyName);
@@ -643,13 +687,15 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse, IDisp
 
     public HttpStatusCode StatusCode { get; }
 
-    public Stream? ContentStream { get; }
+    public Stream? Content { get; }
 
     public string? ContentType { get; }
 
     public string? FileName { get; }
 
     public long? ContentLength { get; }
+
+    public string? ErrorContent { get; }  // Error message if request failed
 
     public void Dispose();
 
@@ -685,6 +731,7 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>, IDisp
 ```
 
 > 💡 **Key Benefits:**
+>
 > - Manages `HttpResponseMessage` lifecycle automatically
 > - Provides `ErrorContent` when the request fails
 > - Prevents premature disposal during enumeration
