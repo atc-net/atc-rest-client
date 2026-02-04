@@ -54,6 +54,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
 - 🔄 **Custom Serialization**: Pluggable contract serialization (defaults to JSON)
 - ✅ **Response Processing**: Built-in support for success/error response handling
 - 📎 **Multipart Form Data**: File upload support with Stream-based API
+- 📤 **Binary Uploads**: Raw binary stream uploads (application/octet-stream)
 - 💾 **Binary Responses**: Handle file downloads with byte[] or Stream responses
 - 🌊 **Streaming Support**: IAsyncEnumerable streaming for large datasets with proper lifecycle management
 - ⏱️ **HTTP Completion Options**: Control response buffering for streaming scenarios
@@ -263,6 +264,35 @@ requestBuilder.WithFiles(files);
 
 using var request = requestBuilder.Build(HttpMethod.Post);
 ```
+
+### 📤 Binary Upload (Raw Stream)
+
+Upload a raw binary stream directly with `application/octet-stream` content type:
+
+```csharp
+await using var fileStream = File.OpenRead("document.bin");
+
+var requestBuilder = messageFactory.FromTemplate("/api/files/upload");
+requestBuilder.WithBinaryBody(fileStream);
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+using var response = await client.SendAsync(request, cancellationToken);
+```
+
+Use a custom content type:
+
+```csharp
+await using var imageStream = File.OpenRead("photo.png");
+
+var requestBuilder = messageFactory.FromTemplate("/api/images/upload");
+requestBuilder.WithBinaryBody(imageStream, "image/png");
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+```
+
+> 💡 **When to use `WithBinaryBody` vs `WithFile`:**
+> - Use `WithBinaryBody` when the API expects raw binary data with `application/octet-stream` or similar content type
+> - Use `WithFile` when the API expects `multipart/form-data` format (typical file upload forms)
 
 ### 💾 File Download (Binary Response)
 
@@ -508,6 +538,9 @@ public interface IMessageRequestBuilder
     // HTTP completion option for streaming
     IMessageRequestBuilder WithHttpCompletionOption(HttpCompletionOption completionOption);
     HttpCompletionOption HttpCompletionOption { get; }
+
+    // Binary upload support (raw stream)
+    IMessageRequestBuilder WithBinaryBody(Stream stream, string? contentType = null);
 
     // Multipart form data support
     IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);

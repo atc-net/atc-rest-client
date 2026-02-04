@@ -261,4 +261,113 @@ public sealed class MessageRequestBuilderAdditionalTests
         message.RequestUri.Should().NotBeNull();
         message.RequestUri!.ToString().Should().Be(template);
     }
+
+    [Fact]
+    public void WithBinaryBody_ThrowsOnNullStream()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithBinaryBody(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("stream");
+    }
+
+    [Fact]
+    public void WithBinaryBody_ReturnsSameInstance()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream();
+
+        // Act & Assert
+        sut.WithBinaryBody(stream).Should().BeSameAs(sut);
+    }
+
+    [Fact]
+    public async Task WithBinaryBody_SetsStreamContent()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var data = new byte[] { 1, 2, 3, 4, 5 };
+        using var stream = new MemoryStream(data);
+
+        // Act
+        sut.WithBinaryBody(stream);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().NotBeNull();
+        message.Content.Should().BeOfType<StreamContent>();
+        var result = await message.Content!.ReadAsByteArrayAsync();
+        result.Should().BeEquivalentTo(data);
+    }
+
+    [Fact]
+    public void WithBinaryBody_SetsDefaultContentType()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream();
+
+        // Act
+        sut.WithBinaryBody(stream);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content!.Headers.ContentType.Should().NotBeNull();
+        message.Content!.Headers.ContentType!.MediaType.Should().Be("application/octet-stream");
+    }
+
+    [Fact]
+    public void WithBinaryBody_SetsCustomContentType()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream();
+        const string customContentType = "image/png";
+
+        // Act
+        sut.WithBinaryBody(stream, customContentType);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content!.Headers.ContentType.Should().NotBeNull();
+        message.Content!.Headers.ContentType!.MediaType.Should().Be("image/png");
+    }
+
+    [Fact]
+    public void WithBinaryBody_DoesNotInterfereWithJsonBody()
+    {
+        // Arrange - test that binary and JSON content are mutually exclusive
+        // When JSON body is set, it takes precedence (checked first in Build)
+        var sut = CreateSut();
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        serializer.Serialize(Arg.Any<object>()).Returns("{\"test\":true}");
+
+        // Act - set JSON body first, then binary body
+        sut.WithBody(new { test = true });
+        sut.WithBinaryBody(stream);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert - JSON content takes precedence (checked first in Build method)
+        message.Content.Should().BeOfType<StringContent>();
+    }
+
+    [Fact]
+    public void WithBinaryBody_UsedAlone_SetsStreamContent()
+    {
+        // Arrange - binary body used alone should work correctly
+        var sut = CreateSut();
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        // Act - only set binary body
+        sut.WithBinaryBody(stream);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert - binary content should be set
+        message.Content.Should().BeOfType<StreamContent>();
+        message.Content!.Headers.ContentType!.MediaType.Should().Be("application/octet-stream");
+    }
 }
