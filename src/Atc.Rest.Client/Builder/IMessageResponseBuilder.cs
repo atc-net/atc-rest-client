@@ -1,28 +1,73 @@
 namespace Atc.Rest.Client.Builder;
 
+/// <summary>
+/// A message response builder used to process and deserialize HTTP responses.
+/// </summary>
 public interface IMessageResponseBuilder
 {
+    /// <summary>
+    /// Registers a status code as a success response without deserialization.
+    /// </summary>
+    /// <param name="statusCode">The HTTP status code to treat as success.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder AddSuccessResponse(
         HttpStatusCode statusCode);
 
+    /// <summary>
+    /// Registers a status code as a success response with typed content deserialization.
+    /// </summary>
+    /// <typeparam name="TResponseContent">The type to deserialize the response content to.</typeparam>
+    /// <param name="statusCode">The HTTP status code to treat as success.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder AddSuccessResponse<TResponseContent>(
         HttpStatusCode statusCode);
 
+    /// <summary>
+    /// Registers a status code as an error response without deserialization.
+    /// </summary>
+    /// <param name="statusCode">The HTTP status code to treat as error.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder AddErrorResponse(
         HttpStatusCode statusCode);
 
+    /// <summary>
+    /// Registers a status code as an error response with typed content deserialization.
+    /// </summary>
+    /// <typeparam name="TResponseContent">The type to deserialize the error content to.</typeparam>
+    /// <param name="statusCode">The HTTP status code to treat as error.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder AddErrorResponse<TResponseContent>(
         HttpStatusCode statusCode);
 
+    /// <summary>
+    /// Builds the response using a custom factory function.
+    /// </summary>
+    /// <typeparam name="TResult">The type of result to create.</typeparam>
+    /// <param name="factory">A factory function that creates the result from the endpoint response.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result created by the factory function.</returns>
     Task<TResult> BuildResponseAsync<TResult>(
         Func<EndpointResponse, TResult> factory,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Builds a typed endpoint response with success content.
+    /// </summary>
+    /// <typeparam name="TSuccessContent">The type of the success content.</typeparam>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An <see cref="EndpointResponse{TSuccess}"/> with the typed success content.</returns>
     Task<EndpointResponse<TSuccessContent>>
         BuildResponseAsync<TSuccessContent>(
             CancellationToken cancellationToken)
         where TSuccessContent : class;
 
+    /// <summary>
+    /// Builds a typed endpoint response with both success and error content.
+    /// </summary>
+    /// <typeparam name="TSuccessContent">The type of the success content.</typeparam>
+    /// <typeparam name="TErrorContent">The type of the error content.</typeparam>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>An <see cref="EndpointResponse{TSuccess, TError}"/> with the typed content.</returns>
     Task<EndpointResponse<TSuccessContent, TErrorContent>>
         BuildResponseAsync<TSuccessContent, TErrorContent>(
             CancellationToken cancellationToken)
@@ -109,4 +154,4 @@ public interface IMessageResponseBuilder
     /// <returns>A <see cref="StreamingEndpointResponse{T}"/> containing the streaming content and response metadata.</returns>
     Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
         CancellationToken cancellationToken = default);
-}
+}

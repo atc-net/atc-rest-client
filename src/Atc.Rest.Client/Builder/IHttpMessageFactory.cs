@@ -20,6 +20,11 @@ public interface IHttpMessageFactory
     IMessageRequestBuilder FromTemplate(
         string pathTemplate);
 
+    /// <summary>
+    /// Creates a message response builder from an HTTP response message.
+    /// </summary>
+    /// <param name="response">The HTTP response message to process. Can be null.</param>
+    /// <returns>A new <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder FromResponse(
         HttpResponseMessage? response);
 }
