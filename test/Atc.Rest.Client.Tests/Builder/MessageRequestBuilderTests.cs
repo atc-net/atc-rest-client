@@ -151,6 +151,42 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
+    public void Should_Replace_Query_Parameters_With_Enum_Without_EnumMember_Attribute(string template)
+    {
+        // OperatorRole.None does not have an EnumMember attribute, so it should fall back to ToString()
+        const OperatorRole operatorRole = OperatorRole.None;
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("operatorRole", operatorRole);
+        var message = sut.Build(HttpMethod.Post);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api?operatorRole=None");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Replace_Multiple_Enum_Parameters(string template)
+    {
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("role1", OperatorRole.Owner);
+        sut.WithQueryParameter("role2", OperatorRole.Admin);
+        sut.WithQueryParameter("role3", OperatorRole.None);
+        var message = sut.Build(HttpMethod.Post);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api?role1=owner&role2=admin&role3=None");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
     public void Should_Replace_Query_Parameters_With_DateTime(string template)
     {
         var from = DateTime.UtcNow;

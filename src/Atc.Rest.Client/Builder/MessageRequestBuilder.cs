@@ -261,6 +261,9 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
         if (sb.Length > 0)
         {
+            // The "#" prefix marks this value as pre-encoded to prevent double-encoding
+            // in BuildQueryKeyEqualValue(). Array values are already URI-escaped here,
+            // so they should be emitted as-is when building the query string.
             queryMapper["#" + name] = sb.ToString();
         }
 
@@ -284,12 +287,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         var valueType = value.GetType();
         if (valueType.IsEnum)
         {
-            queryMapper[name] = valueType
-                .GetTypeInfo()
-                .DeclaredMembers
-                .FirstOrDefault(x => x.Name == value.ToString())
-                ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
-                ?.Value ?? value.ToString()!;
+            queryMapper[name] = GetEnumMemberValue(valueType, value.ToString()!) ?? value.ToString()!;
         }
         else if (value is DateTime dt)
         {
@@ -305,6 +303,20 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         }
 
         return this;
+    }
+
+    /// <summary>
+    /// Gets the EnumMemberAttribute value for an enum member, using a cache to avoid repeated reflection.
+    /// </summary>
+    private static string? GetEnumMemberValue(Type enumType, string memberName)
+    {
+        return EnumMemberCache.GetOrAdd((enumType, memberName), key =>
+            key.EnumType
+                .GetTypeInfo()
+                .DeclaredMembers
+                .FirstOrDefault(x => x.Name == key.MemberName)
+                ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
+                ?.Value);
     }
 
     private Uri BuildRequestUri()
@@ -328,8 +340,15 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         return new Uri(urlBuilder.ToString(), UriKind.RelativeOrAbsolute);
     }
 
-    private static string BuildQueryKeyEqualValue(
-        KeyValuePair<string, string> pair)
+    /// <summary>
+    /// Builds a "key=value" query string segment from a key-value pair.
+    /// </summary>
+    /// <remarks>
+    /// Keys prefixed with "#" indicate pre-encoded values (used for array parameters).
+    /// These values are emitted as-is without additional URI encoding.
+    /// Regular keys have their values URI-encoded to ensure proper escaping.
+    /// </remarks>
+    private static string BuildQueryKeyEqualValue(KeyValuePair<string, string> pair)
         => pair.Key.StartsWith("#", StringComparison.Ordinal)
             ? $"{pair.Key.Replace("#", string.Empty)}={pair.Value}"
             : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
