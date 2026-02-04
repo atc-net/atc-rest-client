@@ -338,4 +338,224 @@ public sealed class MessageResponseBuilderTests
         result.Content.Should().Be("plain text content");
         result.ContentObject.Should().Be("plain text content");
     }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Read_Content_As_String_When_ContentType_Is_Null(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - response with no ContentType header
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("content without type"),
+        };
+        response.Content.Headers.ContentType = null;
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - null ContentType should be treated as text
+        result.Content.Should().Be("content without type");
+        result.ContentObject.Should().Be("content without type");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("image/png")]
+    [InlineAutoNSubstituteData("image/jpeg")]
+    [InlineAutoNSubstituteData("application/octet-stream")]
+    [InlineAutoNSubstituteData("application/pdf")]
+    public async Task Should_Read_Binary_Content_For_NonText_ContentTypes(
+        string contentType,
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        var binaryData = new byte[] { 0x89, 0x50, 0x4E, 0x47 };
+
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(binaryData),
+        };
+
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.ContentObject.Should().BeEquivalentTo(binaryData);
+        result.Content.Should().BeEmpty();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Return_Empty_Response_When_Response_Is_Null(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        var sut = CreateSut(response: null);
+
+        // Act
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        result.Content.Should().BeEmpty();
+        result.ContentObject.Should().BeNull();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Respect_IsSuccessStatusCode_For_Unmarked_StatusCodes(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - don't explicitly mark the status code as success or error
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("content"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act - don't call AddSuccessResponse or AddErrorResponse
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - should default to HTTP status code success indicator
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Return_Error_For_Unmarked_Error_StatusCodes(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - don't explicitly mark the status code
+        using var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent("not found"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - should default to HTTP status code success indicator (false for 4xx)
+        result.IsSuccess.Should().BeFalse();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessResponse_CanOverride_ErrorStatusCode_AsSuccess(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - mark a typically error status as success
+        using var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent("custom 404 handling"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessResponse(HttpStatusCode.NotFound)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - configured as success despite being 404
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddErrorResponse_CanOverride_SuccessStatusCode_AsError(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - mark a typically success status as error
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("business logic error"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddErrorResponse(HttpStatusCode.OK)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - configured as error despite being 200
+        result.IsSuccess.Should().BeFalse();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Include_Both_Response_And_Content_Headers(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("content", System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        response.Headers.Add("X-Request-Id", "12345");
+        response.Headers.Add("X-Custom", "custom-value");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - should include both types of headers (case may vary)
+        result.Headers.Keys.Should().Contain(k => k.Equals("X-Request-Id", StringComparison.OrdinalIgnoreCase));
+        result.Headers.Keys.Should().Contain(k => k.Equals("X-Custom", StringComparison.OrdinalIgnoreCase));
+        result.Headers.Keys.Should().Contain(k => k.Equals("Content-Type", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildResponseAsync_GenericOneType_ReturnsTypedResponse(
+        SuccessResponse expectedResponse,
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        serializer.Deserialize<SuccessResponse>(Arg.Any<string>()).Returns(expectedResponse);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessResponse<SuccessResponse>(HttpStatusCode.OK)
+            .BuildResponseAsync<SuccessResponse>(cancellationToken);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SuccessContent.Should().Be(expectedResponse);
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task BuildResponseAsync_GenericTwoTypes_ReturnsTypedResponse(
+        SuccessResponse expectedResponse,
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        serializer.Deserialize<SuccessResponse>(Arg.Any<string>()).Returns(expectedResponse);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessResponse<SuccessResponse>(HttpStatusCode.OK)
+            .BuildResponseAsync<SuccessResponse, BadResponse>(cancellationToken);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.SuccessContent.Should().Be(expectedResponse);
+        result.ErrorContent.Should().BeNull();
+    }
 }

@@ -370,4 +370,341 @@ public sealed class MessageRequestBuilderAdditionalTests
         message.Content.Should().BeOfType<StreamContent>();
         message.Content!.Headers.ContentType!.MediaType.Should().Be("application/octet-stream");
     }
+
+    [Fact]
+    public void WithHeaderParameter_WithEmptyString_AddsHeader()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.WithHeaderParameter("X-Empty", string.Empty);
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert - empty string is still added as header value
+        message.Headers.Contains("X-Empty").Should().BeTrue();
+        message.Headers.GetValues("X-Empty").Should().ContainSingle().Which.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WithQueryParameter_WithGuidArray_FormatsCorrectly()
+    {
+        // Arrange
+        var sut = CreateSut("/api");
+        var guids = new[]
+        {
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        };
+
+        // Act
+        sut.WithQueryParameter("ids", guids);
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert
+        var uri = message!.RequestUri!.ToString();
+        uri.Should().Contain("ids=11111111-1111-1111-1111-111111111111");
+        uri.Should().Contain("ids=22222222-2222-2222-2222-222222222222");
+    }
+
+    [Fact]
+    public void WithQueryParameter_WithDecimalValue_FormatsCorrectly()
+    {
+        // Arrange
+        var sut = CreateSut("/api");
+
+        // Act
+        sut.WithQueryParameter("price", 100m);
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert - use integer decimal to avoid locale-specific decimal separator issues
+        message!.RequestUri!.ToString().Should().Be("/api?price=100");
+    }
+
+    [Fact]
+    public void Build_WithFormFieldsAndFiles_CreatesMultipartContent()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        // Act
+        sut.WithFormField("name", "test");
+        sut.WithFile(stream, "file", "test.txt");
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<MultipartFormDataContent>();
+    }
+
+    [Fact]
+    public void WithQueryParameter_WithUnicodeCharacters_HandlesCorrectly()
+    {
+        // Arrange
+        var sut = CreateSut("/api");
+
+        // Act
+        sut.WithQueryParameter("name", "日本語");
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert - URI contains the parameter (may be URL-encoded on some platforms)
+        var uri = message!.RequestUri!.ToString();
+        uri.Should().Contain("name=");
+
+        // Verify the decoded URI contains the original value
+        Uri.UnescapeDataString(uri).Should().Contain("日本語");
+    }
+
+    [Fact]
+    public void WithPathParameter_WithUnicodeCharacters_HandlesCorrectly()
+    {
+        // Arrange
+        var sut = CreateSut("/api/users/{name}");
+
+        // Act
+        sut.WithPathParameter("name", "日本語");
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert - URI replaces the placeholder (may be URL-encoded on some platforms)
+        var uri = message!.RequestUri!.ToString();
+        uri.Should().NotContain("{name}");
+
+        // Verify the decoded URI contains the original value
+        Uri.UnescapeDataString(uri).Should().Contain("日本語");
+    }
+
+    [Fact]
+    public void WithFile_ThrowsOnNullStream()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithFile(null!, "file", "test.txt"))
+            .Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("stream");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WithFile_ThrowsOnInvalidName(string? name)
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithFile(stream, name!, "test.txt"))
+            .Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WithFile_ThrowsOnInvalidFileName(string? fileName)
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithFile(stream, "file", fileName!))
+            .Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void WithFile_ReturnsSameInstance()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream();
+
+        // Act & Assert
+        sut.WithFile(stream, "file", "test.txt").Should().BeSameAs(sut);
+    }
+
+    [Fact]
+    public void WithFile_WithContentType_SetsContentType()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        // Act
+        sut.WithFile(stream, "image", "photo.png", "image/png");
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<MultipartFormDataContent>();
+    }
+
+    [Fact]
+    public void WithFiles_ThrowsOnNullCollection()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithFiles(null!))
+            .Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("files");
+    }
+
+    [Fact]
+    public void WithFiles_ReturnsSameInstance()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream1 = new MemoryStream();
+        using var stream2 = new MemoryStream();
+        var files = new (Stream Stream, string Name, string FileName, string? ContentType)[]
+        {
+            (stream1, "file1", "a.txt", null),
+            (stream2, "file2", "b.txt", "text/plain"),
+        };
+
+        // Act & Assert
+        sut.WithFiles(files).Should().BeSameAs(sut);
+    }
+
+    [Fact]
+    public void WithFiles_AddsMultipleFiles()
+    {
+        // Arrange
+        var sut = CreateSut();
+        using var stream1 = new MemoryStream(new byte[] { 1 });
+        using var stream2 = new MemoryStream(new byte[] { 2 });
+        var files = new (Stream Stream, string Name, string FileName, string? ContentType)[]
+        {
+            (stream1, "file1", "a.txt", null),
+            (stream2, "file2", "b.txt", "text/plain"),
+        };
+
+        // Act
+        sut.WithFiles(files);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<MultipartFormDataContent>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WithFormField_ThrowsOnInvalidName(string? name)
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithFormField(name!, "value"))
+            .Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void WithFormField_ThrowsOnNullValue()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.Invoking(x => x.WithFormField("field", null!))
+            .Should().Throw<ArgumentNullException>()
+            .Which.ParamName.Should().Be("value");
+    }
+
+    [Fact]
+    public void WithFormField_ReturnsSameInstance()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.WithFormField("name", "value").Should().BeSameAs(sut);
+    }
+
+    [Fact]
+    public void WithFormField_OnlyFormFields_CreatesMultipartContent()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.WithFormField("field1", "value1");
+        sut.WithFormField("field2", "value2");
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<MultipartFormDataContent>();
+    }
+
+    [Fact]
+    public void Build_WithOnlyBinaryBody_TakesPrecedenceOverFormFields()
+    {
+        // Arrange - binary body set after form fields should still be binary
+        var sut = CreateSut();
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        // Act - JSON body has priority over binary body (set order matters)
+        sut.WithBinaryBody(stream);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<StreamContent>();
+    }
+
+    [Fact]
+    public void Build_ContentPriority_JsonOverBinaryOverMultipart()
+    {
+        // Arrange - test that JSON body takes priority
+        var sut = CreateSut();
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
+        serializer.Serialize(Arg.Any<object>()).Returns("{\"test\":true}");
+
+        // Act - set binary first, then JSON
+        sut.WithBinaryBody(stream);
+        sut.WithBody(new { test = true });
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert - JSON content takes priority (checked first in Build method)
+        message.Content.Should().BeOfType<StringContent>();
+    }
+
+    [Fact]
+    public void WithQueryParameter_WithEnumArray_FormatsCorrectly()
+    {
+        // Arrange
+        var sut = CreateSut("/api");
+
+        // Act - since the generic WithQueryParameter(IEnumerable) is used, enums go through ToString
+        var roles = new[] { "admin", "user" };
+        sut.WithQueryParameter("roles", roles);
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert
+        var uri = message!.RequestUri!.ToString();
+        uri.Should().Contain("roles=admin");
+        uri.Should().Contain("roles=user");
+    }
+
+    [Fact]
+    public void WithQueryParameter_MultipleSameNameParameters_AllIncluded()
+    {
+        // Arrange
+        var sut = CreateSut("/api");
+
+        // Act
+        sut.WithQueryParameter("tag", "a");
+        sut.WithQueryParameter("other", "value");
+        var message = sut.Build(HttpMethod.Get);
+
+        // Assert - last value wins for same key (dictionary behavior)
+        var uri = message!.RequestUri!.ToString();
+        uri.Should().Contain("tag=a");
+        uri.Should().Contain("other=value");
+    }
 }

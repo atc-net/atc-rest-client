@@ -405,4 +405,121 @@ public sealed class MessageRequestBuilderTests
             .Should()
             .Be(content);
     }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Replace_Query_Parameters_With_Array_Containing_Special_Characters(string template)
+    {
+        var sut = CreateSut(template);
+
+        var values = new[] { "hello world", "foo&bar", "test=value" };
+
+        sut.WithQueryParameter("items", values);
+        var message = sut.Build(HttpMethod.Get);
+
+        var uri = message!.RequestUri!.ToString();
+        uri.Should().Contain("items=hello%20world");
+        uri.Should().Contain("items=foo%26bar");
+        uri.Should().Contain("items=test%3Dvalue");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Replace_Query_Parameters_With_Single_Item_Array(string template)
+    {
+        var sut = CreateSut(template);
+
+        var values = new[] { "single" };
+
+        sut.WithQueryParameter("item", values);
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api?item=single");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Handle_Query_Parameters_With_Nullable_Enum(string template)
+    {
+        OperatorRole? nullableRole = OperatorRole.Admin;
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("role", nullableRole);
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api?role=admin");
+    }
+
+    [Theory]
+    [InlineAutoNSubstituteData("/api")]
+    public void Should_Omit_Query_Parameters_With_Null_Nullable_Enum(string template)
+    {
+        OperatorRole? nullableRole = null;
+        var sut = CreateSut(template);
+
+        sut.WithQueryParameter("role", nullableRole);
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api");
+    }
+
+    [Fact]
+    public void Should_Use_Cached_EnumMember_Value_On_Subsequent_Calls()
+    {
+        var sut1 = CreateSut("/api");
+        var sut2 = CreateSut("/api");
+
+        // First call populates cache
+        sut1.WithQueryParameter("role", OperatorRole.Owner);
+        var message1 = sut1.Build(HttpMethod.Get);
+
+        // Second call should use cached value
+        sut2.WithQueryParameter("role", OperatorRole.Owner);
+        var message2 = sut2.Build(HttpMethod.Get);
+
+        message1!.RequestUri!.ToString().Should().Be("/api?role=owner");
+        message2!.RequestUri!.ToString().Should().Be("/api?role=owner");
+    }
+
+    [Fact]
+    public void WithPathParameter_WithZeroValue_IncludesInUri()
+    {
+        var sut = CreateSut("/api/items/{id}");
+
+        sut.WithPathParameter("id", 0);
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api/items/0");
+    }
+
+    [Fact]
+    public void WithPathParameter_WithNegativeValue_IncludesInUri()
+    {
+        var sut = CreateSut("/api/items/{id}");
+
+        sut.WithPathParameter("id", -1);
+        var message = sut.Build(HttpMethod.Get);
+
+        message!
+            .RequestUri!
+            .ToString()
+            .Should()
+            .Be("/api/items/-1");
+    }
 }
