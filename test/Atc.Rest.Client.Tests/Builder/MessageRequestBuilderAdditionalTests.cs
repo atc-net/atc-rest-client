@@ -240,8 +240,8 @@ public sealed class MessageRequestBuilderAdditionalTests
         sut.WithQueryParameter("ids", Array.Empty<int>());
         var message = sut.Build(HttpMethod.Get);
 
-        // Assert
-        message.RequestUri!.ToString().Should().Be("/api?ids=");
+        // Assert - empty arrays should be omitted entirely (PR #21 fix)
+        message.RequestUri!.ToString().Should().Be("/api");
     }
 
     [Theory]

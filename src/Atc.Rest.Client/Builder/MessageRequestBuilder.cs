@@ -180,6 +180,53 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
     public IMessageRequestBuilder WithQueryParameter(
         string name,
+        string? value)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        if (value is not null)
+        {
+            queryMapper[name] = value;
+        }
+
+        return this;
+    }
+
+    public IMessageRequestBuilder WithQueryParameter(
+        string name,
+        IEnumerable? values)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        if (values is null)
+        {
+            return this;
+        }
+
+        var sb = new StringBuilder();
+        foreach (var value in values.OfType<object>())
+        {
+            sb.Append(sb.Length == 0
+                ? Uri.EscapeDataString(value.ToString()!)
+                : $"&{name}={Uri.EscapeDataString(value.ToString()!)}");
+        }
+
+        if (sb.Length > 0)
+        {
+            queryMapper["#" + name] = sb.ToString();
+        }
+
+        return this;
+    }
+
+    public IMessageRequestBuilder WithQueryParameter(
+        string name,
         object? value)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -193,27 +240,14 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         }
 
         var valueType = value.GetType();
-        if (valueType.IsArray || valueType.IsGenericType)
-        {
-            var objects = ((IEnumerable)value).Cast<object>().ToArray();
-            var sb = new StringBuilder();
-            for (var i = 0; i < objects.Length; i++)
-            {
-                sb.Append(i == 0
-                    ? Uri.EscapeDataString(objects[i].ToString())
-                    : $"&{name}={Uri.EscapeDataString(objects[i].ToString())}");
-            }
-
-            queryMapper["#" + name] = sb.ToString();
-        }
-        else if (valueType.IsEnum)
+        if (valueType.IsEnum)
         {
             queryMapper[name] = valueType
                 .GetTypeInfo()
                 .DeclaredMembers
                 .FirstOrDefault(x => x.Name == value.ToString())
                 ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
-                ?.Value ?? value.ToString();
+                ?.Value ?? value.ToString()!;
         }
         else if (value is DateTime dt)
         {
@@ -225,7 +259,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         }
         else
         {
-            queryMapper[name] = value.ToString();
+            queryMapper[name] = value.ToString()!;
         }
 
         return this;

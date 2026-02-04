@@ -28,10 +28,12 @@ public sealed class MessageResponseBuilderStreamingTests
     {
         // Arrange
         const string errorContent = "Bad Request: Invalid data";
+
         using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
         {
             Content = new StringContent(errorContent),
         };
+
         var sut = CreateSut(response);
 
         // Act
@@ -52,10 +54,12 @@ public sealed class MessageResponseBuilderStreamingTests
         {
             Content = new StringContent("[\"item1\", \"item2\"]"),
         };
+
         var expectedItems = new[] { "item1", "item2" };
         serializer
             .DeserializeAsyncEnumerable<string>(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(expectedItems.ToAsyncEnumerable());
+
         var sut = CreateSut(response);
 
         // Act
@@ -76,10 +80,12 @@ public sealed class MessageResponseBuilderStreamingTests
         {
             Content = new StringContent("[\"item1\", \"item2\", \"item3\"]"),
         };
+
         var expectedItems = new[] { "item1", "item2", "item3" };
         serializer
             .DeserializeAsyncEnumerable<string>(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(expectedItems.ToAsyncEnumerable());
+
         var sut = CreateSut(response);
 
         // Act
@@ -98,9 +104,11 @@ public sealed class MessageResponseBuilderStreamingTests
         {
             Content = new StringContent("[]"),
         };
+
         serializer
             .DeserializeAsyncEnumerable<string>(Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<string?>());
+
         var sut = CreateSut(response);
 
         // Act
