@@ -2,6 +2,12 @@ namespace Atc.Rest.Client.Builder;
 
 internal class MessageRequestBuilder : IMessageRequestBuilder
 {
+    /// <summary>
+    /// Cache for enum member attribute values to avoid repeated reflection.
+    /// Key: (EnumType, MemberName), Value: EnumMemberAttribute.Value or null if not found.
+    /// </summary>
+    private static readonly ConcurrentDictionary<(Type EnumType, string MemberName), string?> EnumMemberCache = new();
+
     private readonly string template;
     private readonly IContractSerializer serializer;
     private readonly Dictionary<string, string> pathMapper;
@@ -30,73 +36,109 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     /// <inheritdoc />
     public HttpCompletionOption HttpCompletionOption { get; private set; } = HttpCompletionOption.ResponseContentRead;
 
-    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "OK - ByteArrayContent can't be disposed.")]
-    [SuppressMessage("Design", "MA0051:Method is too long", Justification = "OK.")]
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "OK - Content ownership transfers to HttpRequestMessage.")]
     public HttpRequestMessage Build(HttpMethod method)
     {
-        var message = new HttpRequestMessage();
+        var message = new HttpRequestMessage
+        {
+            RequestUri = BuildRequestUri(),
+            Method = method,
+        };
+
         foreach (var parameter in headerMapper)
         {
             message.Headers.Add(parameter.Key, parameter.Value);
         }
 
-        message.RequestUri = BuildRequestUri();
-        message.Method = method;
-
-        if (content is not null)
-        {
-            message.Content = new StringContent(content);
-            message.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-        }
-        else if (binaryContent.HasValue)
-        {
-            var streamContent = new StreamContent(binaryContent.Value.Stream);
-            streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(binaryContent.Value.ContentType);
-            message.Content = streamContent;
-        }
-        else if (streamFiles.Count > 0 || formFields.Count > 0)
-        {
-            var formDataContent = new MultipartFormDataContent();
-
-            foreach (var formField in formFields)
-            {
-                formDataContent.Add(new StringContent(formField.Value), formField.Key);
-            }
-
-            foreach (var file in streamFiles)
-            {
-                var streamContent = new StreamContent(file.Stream);
-                if (file.ContentType is not null)
-                {
-                    streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(file.ContentType);
-                }
-
-                formDataContent.Add(streamContent, file.Name, file.FileName);
-            }
-
-            message.Content = formDataContent;
-        }
-        else if (contentFormFiles is not null)
-        {
-            var formDataContent = new MultipartFormDataContent();
-            foreach (var formFile in contentFormFiles)
-            {
-                byte[] bytes;
-                using (var binaryReader = new BinaryReader(formFile.OpenReadStream()))
-                {
-                    bytes = binaryReader.ReadBytes((int)formFile.OpenReadStream().Length);
-                }
-
-                var bytesContent = new ByteArrayContent(bytes);
-                formDataContent.Add(bytesContent, "Request", formFile.FileName);
-            }
-
-            message.Headers.Remove("accept");
-            message.Headers.Add("accept", "application/octet-stream");
-            message.Content = formDataContent;
-        }
+        message.Content = BuildContent(message);
 
         return message;
+    }
+
+    private HttpContent? BuildContent(HttpRequestMessage message)
+    {
+        if (content is not null)
+        {
+            return BuildJsonContent();
+        }
+
+        if (binaryContent.HasValue)
+        {
+            return BuildBinaryContent();
+        }
+
+        if (streamFiles.Count > 0 || formFields.Count > 0)
+        {
+            return BuildMultipartContent();
+        }
+
+        if (contentFormFiles is not null)
+        {
+            return BuildFormFileContent(message);
+        }
+
+        return null;
+    }
+
+    private HttpContent BuildJsonContent()
+    {
+        var stringContent = new StringContent(content!);
+        stringContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+        return stringContent;
+    }
+
+    private HttpContent BuildBinaryContent()
+    {
+        var streamContent = new StreamContent(binaryContent!.Value.Stream);
+        streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(binaryContent.Value.ContentType);
+        return streamContent;
+    }
+
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Content ownership transfers to MultipartFormDataContent.")]
+    private HttpContent BuildMultipartContent()
+    {
+        var formDataContent = new MultipartFormDataContent();
+
+        foreach (var formField in formFields)
+        {
+            formDataContent.Add(new StringContent(formField.Value), formField.Key);
+        }
+
+        foreach (var file in streamFiles)
+        {
+            var streamContent = new StreamContent(file.Stream);
+            if (file.ContentType is not null)
+            {
+                streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(file.ContentType);
+            }
+
+            formDataContent.Add(streamContent, file.Name, file.FileName);
+        }
+
+        return formDataContent;
+    }
+
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Content ownership transfers to MultipartFormDataContent.")]
+    private HttpContent BuildFormFileContent(HttpRequestMessage message)
+    {
+        var formDataContent = new MultipartFormDataContent();
+
+        foreach (var formFile in contentFormFiles!)
+        {
+            byte[] bytes;
+            using (var binaryReader = new BinaryReader(formFile.OpenReadStream()))
+            {
+                bytes = binaryReader.ReadBytes((int)formFile.OpenReadStream().Length);
+            }
+
+            var bytesContent = new ByteArrayContent(bytes);
+            formDataContent.Add(bytesContent, "Request", formFile.FileName);
+        }
+
+        message.Headers.Remove("accept");
+        message.Headers.Add("accept", "application/octet-stream");
+
+        return formDataContent;
     }
 
     public IMessageRequestBuilder WithBody<TBody>(
