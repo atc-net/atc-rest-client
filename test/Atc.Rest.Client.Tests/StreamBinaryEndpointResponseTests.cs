@@ -78,7 +78,6 @@ public sealed class StreamBinaryEndpointResponseTests
 
         // Assert
         sut.IsSuccess.Should().BeTrue();
-        sut.IsOk.Should().BeTrue();
         sut.StatusCode.Should().Be(HttpStatusCode.OK);
         sut.Content.Should().BeSameAs(stream);
         sut.ContentType.Should().Be("application/octet-stream");
@@ -144,22 +143,6 @@ public sealed class StreamBinaryEndpointResponseTests
 
         // Assert
         act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void IsOk_WhenStatusCodeIsNotOK_ReturnsFalse()
-    {
-        // Arrange & Act
-        using var sut = new StreamBinaryEndpointResponse(
-            isSuccess: true,
-            HttpStatusCode.Created,
-            contentStream: null,
-            contentType: null,
-            fileName: null,
-            contentLength: null);
-
-        // Assert
-        sut.IsOk.Should().BeFalse();
     }
 
     [Fact]

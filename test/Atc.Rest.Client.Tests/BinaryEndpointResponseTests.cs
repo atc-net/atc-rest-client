@@ -78,28 +78,11 @@ public sealed class BinaryEndpointResponseTests
 
         // Assert
         sut.IsSuccess.Should().BeTrue();
-        sut.IsOk.Should().BeTrue();
         sut.StatusCode.Should().Be(HttpStatusCode.OK);
         sut.Content.Should().BeEquivalentTo(content);
         sut.ContentType.Should().Be("application/octet-stream");
         sut.FileName.Should().Be("test.bin");
         sut.ContentLength.Should().Be(3);
-    }
-
-    [Fact]
-    public void IsOk_WhenStatusCodeIsNotOK_ReturnsFalse()
-    {
-        // Arrange & Act
-        var sut = new BinaryEndpointResponse(
-            isSuccess: true,
-            HttpStatusCode.Created,
-            content: null,
-            contentType: null,
-            fileName: null,
-            contentLength: null);
-
-        // Assert
-        sut.IsOk.Should().BeFalse();
     }
 
     [Fact]

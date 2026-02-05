@@ -406,7 +406,7 @@ else
 >
 > - ✅ Proper lifecycle management - the `HttpResponseMessage` is disposed when you dispose the response
 > - ✅ Error handling - access to `ErrorContent` when the request fails
-> - ✅ Status code information - check `IsSuccess`, `IsOk`, and `StatusCode`
+> - ✅ Status code information - check `IsSuccess` and `StatusCode`
 > - ✅ Avoids premature disposal - no risk of disposing the response before enumeration completes
 
 ### 📋 Handling Responses
@@ -592,33 +592,31 @@ All response types provide two status properties for checking request outcomes:
 | Property    | Meaning                        | Determination                                       |
 |-------------|--------------------------------|-----------------------------------------------------|
 | `IsSuccess` | Request completed successfully | Based on HTTP 2xx status or configured status codes |
-| `IsOk`      | Status code is exactly 200     | `StatusCode == HttpStatusCode.OK`                   |
 
 **Examples:**
 
-| HTTP Status    | `IsSuccess` | `IsOk`     |
-|----------------|-------------|------------|
-| 200 OK         | ✅ `true`   | ✅ `true`  |
-| 201 Created    | ✅ `true`   | ❌ `false` |
-| 204 NoContent  | ✅ `true`   | ❌ `false` |
-| 400 BadRequest | ❌ `false`  | ❌ `false` |
-| 404 NotFound   | ❌ `false`  | ❌ `false` |
+| HTTP Status    | `IsSuccess` |
+|----------------|-------------|
+| 200 OK         | ✅ `true`   |
+| 201 Created    | ✅ `true`   |
+| 204 NoContent  | ✅ `true`   |
+| 400 BadRequest | ❌ `false`  |
+| 404 NotFound   | ❌ `false`  |
 
 **When to use each:**
 
 - **`IsSuccess`**: General success check — "Did the request succeed?"
-- **`IsOk`**: Specific status check — "Was the response exactly 200 OK?"
 
 All response types support both properties:
 
-| Type                                 | `IsSuccess` | `IsOk` |
-|--------------------------------------|-------------|--------|
-| `EndpointResponse`                   | ✅          | ✅     |
-| `EndpointResponse<TSuccess>`         | ✅          | ✅     |
-| `EndpointResponse<TSuccess, TError>` | ✅          | ✅     |
-| `BinaryEndpointResponse`             | ✅          | ✅     |
-| `StreamBinaryEndpointResponse`       | ✅          | ✅     |
-| `StreamingEndpointResponse<T>`       | ✅          | ✅     |
+| Type                                 | `IsSuccess` |
+|--------------------------------------|-------------|
+| `EndpointResponse`                   | ✅          |
+| `EndpointResponse<TSuccess>`         | ✅          |
+| `EndpointResponse<TSuccess, TError>` | ✅          |
+| `BinaryEndpointResponse`             | ✅          |
+| `StreamBinaryEndpointResponse`       | ✅          |
+| `StreamingEndpointResponse<T>`       | ✅          |
 
 ### Response Types
 
@@ -628,8 +626,6 @@ All response types support both properties:
 public class EndpointResponse : IEndpointResponse
 {
     public bool IsSuccess { get; }
-
-    public bool IsOk { get; }  // ✅ True if StatusCode == 200
 
     public HttpStatusCode StatusCode { get; }
 
@@ -656,8 +652,6 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
 {
     public bool IsSuccess { get; }
 
-    public bool IsOk { get; }  // ✅ True if StatusCode == 200
-
     public HttpStatusCode StatusCode { get; }
 
     public byte[]? Content { get; }
@@ -682,8 +676,6 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
 public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse, IDisposable
 {
     public bool IsSuccess { get; }
-
-    public bool IsOk { get; }  // ✅ True if StatusCode == 200
 
     public HttpStatusCode StatusCode { get; }
 
@@ -713,8 +705,6 @@ A disposable response type for streaming `IAsyncEnumerable<T>` content with prop
 public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>, IDisposable
 {
     public bool IsSuccess { get; }
-
-    public bool IsOk { get; }  // ✅ True if StatusCode == 200
 
     public HttpStatusCode StatusCode { get; }
 

@@ -41,11 +41,6 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
     public bool IsSuccess { get; }
 
     /// <summary>
-    /// Gets a value indicating whether the status code indicates OK (200).
-    /// </summary>
-    public bool IsOk => StatusCode == HttpStatusCode.OK;
-
-    /// <summary>
     /// Gets the HTTP status code.
     /// </summary>
     public HttpStatusCode StatusCode { get; }

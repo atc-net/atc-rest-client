@@ -19,7 +19,6 @@ public sealed class StreamingEndpointResponseTests
 
         // Assert
         sut.IsSuccess.Should().BeTrue();
-        sut.IsOk.Should().BeTrue();
         sut.StatusCode.Should().Be(HttpStatusCode.OK);
         sut.Content.Should().BeSameAs(content);
         sut.ErrorContent.Should().BeNull();
@@ -42,30 +41,9 @@ public sealed class StreamingEndpointResponseTests
 
         // Assert
         sut.IsSuccess.Should().BeFalse();
-        sut.IsOk.Should().BeFalse();
         sut.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         sut.Content.Should().BeNull();
         sut.ErrorContent.Should().Be(errorContent);
-    }
-
-    [Theory]
-    [InlineData(HttpStatusCode.OK, true)]
-    [InlineData(HttpStatusCode.Created, false)]
-    [InlineData(HttpStatusCode.NoContent, false)]
-    [InlineData(HttpStatusCode.BadRequest, false)]
-    [InlineData(HttpStatusCode.NotFound, false)]
-    public void IsOk_ReturnsCorrectValue(HttpStatusCode statusCode, bool expected)
-    {
-        // Arrange & Act
-        using var sut = new StreamingEndpointResponse<string>(
-            isSuccess: false,
-            statusCode,
-            content: null,
-            errorContent: null,
-            httpResponse: null);
-
-        // Assert
-        sut.IsOk.Should().Be(expected);
     }
 
     [Fact]
