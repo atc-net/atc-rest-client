@@ -11,11 +11,6 @@ public interface IEndpointResponse
     bool IsSuccess { get; }
 
     /// <summary>
-    /// Gets a value indicating whether the status code indicates OK (200).
-    /// </summary>
-    bool IsOk { get; }
-
-    /// <summary>
     /// Gets the HTTP status code.
     /// </summary>
     HttpStatusCode StatusCode { get; }
@@ -34,4 +29,4 @@ public interface IEndpointResponse
     /// Gets the response headers.
     /// </summary>
     IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
-}
+}
