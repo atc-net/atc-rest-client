@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Atc.Test" Version="2.0.16" />
+    <PackageReference Include="Atc.Test" Version="2.0.17" />
     <PackageReference Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.4.1" />
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.1.0" />
