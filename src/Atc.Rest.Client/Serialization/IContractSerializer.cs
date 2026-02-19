@@ -10,8 +10,7 @@ public interface IContractSerializer
     /// </summary>
     /// <param name="value">The object to serialize.</param>
     /// <returns>A string representation of the object.</returns>
-    string Serialize(
-        object value);
+    string Serialize(object value);
 
     /// <summary>
     /// Deserializes a string to the specified type.
@@ -19,8 +18,7 @@ public interface IContractSerializer
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <param name="json">The string to deserialize.</param>
     /// <returns>The deserialized object, or null if deserialization fails.</returns>
-    T? Deserialize<T>(
-        string json);
+    T? Deserialize<T>(string json);
 
     /// <summary>
     /// Deserializes a UTF-8 encoded byte array to the specified type.
@@ -28,8 +26,7 @@ public interface IContractSerializer
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <param name="utf8Json">The UTF-8 encoded byte array to deserialize.</param>
     /// <returns>The deserialized object, or null if deserialization fails.</returns>
-    T? Deserialize<T>(
-        byte[] utf8Json);
+    T? Deserialize<T>(byte[] utf8Json);
 
     /// <summary>
     /// Deserializes a string to the specified type.

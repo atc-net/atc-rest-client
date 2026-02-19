@@ -25,19 +25,16 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         responseCodes = [];
     }
 
-    private delegate object? ContentSerializerDelegate(
-        string content);
+    private delegate object? ContentSerializerDelegate(string content);
 
-    public IMessageResponseBuilder AddErrorResponse(
-        HttpStatusCode statusCode)
+    public IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode)
         => AddEmptyResponse(statusCode, isSuccess: false);
 
     public IMessageResponseBuilder AddErrorResponse<TResponseContent>(
         HttpStatusCode statusCode)
         => AddTypedResponse<TResponseContent>(statusCode, isSuccess: false);
 
-    public IMessageResponseBuilder AddSuccessResponse(
-        HttpStatusCode statusCode)
+    public IMessageResponseBuilder AddSuccessResponse(HttpStatusCode statusCode)
         => AddEmptyResponse(statusCode, isSuccess: true);
 
     public IMessageResponseBuilder AddSuccessResponse<TResponseContent>(
@@ -304,8 +301,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         return headers;
     }
 
-    private bool IsSuccessStatus(
-        HttpResponseMessage responseMessage)
+    private bool IsSuccessStatus(HttpResponseMessage responseMessage)
         => responseCodes.TryGetValue(responseMessage.StatusCode, out var isSuccess)
             ? isSuccess
             : responseMessage.IsSuccessStatusCode;
@@ -327,7 +323,8 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     }
 
     private IMessageResponseBuilder AddTypedResponse<T>(
-        HttpStatusCode statusCode, bool isSuccess)
+        HttpStatusCode statusCode,
+        bool isSuccess)
     {
         responseSerializers[statusCode] = (
             content => string.IsNullOrWhiteSpace(content)

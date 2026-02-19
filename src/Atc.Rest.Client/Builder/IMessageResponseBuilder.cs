@@ -10,8 +10,7 @@ public interface IMessageResponseBuilder
     /// </summary>
     /// <param name="statusCode">The HTTP status code to treat as success.</param>
     /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
-    IMessageResponseBuilder AddSuccessResponse(
-        HttpStatusCode statusCode);
+    IMessageResponseBuilder AddSuccessResponse(HttpStatusCode statusCode);
 
     /// <summary>
     /// Registers a status code as a success response with typed content deserialization.
@@ -27,8 +26,7 @@ public interface IMessageResponseBuilder
     /// </summary>
     /// <param name="statusCode">The HTTP status code to treat as error.</param>
     /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
-    IMessageResponseBuilder AddErrorResponse(
-        HttpStatusCode statusCode);
+    IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode);
 
     /// <summary>
     /// Registers a status code as an error response with typed content deserialization.
@@ -57,8 +55,7 @@ public interface IMessageResponseBuilder
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An <see cref="EndpointResponse{TSuccess}"/> with the typed success content.</returns>
     Task<EndpointResponse<TSuccessContent>>
-        BuildResponseAsync<TSuccessContent>(
-            CancellationToken cancellationToken)
+        BuildResponseAsync<TSuccessContent>(CancellationToken cancellationToken)
         where TSuccessContent : class;
 
     /// <summary>

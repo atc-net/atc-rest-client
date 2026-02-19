@@ -579,6 +579,8 @@ dotnet_diagnostic.S6964.severity = none             # Value type property used a
 # Custom - Code Analyzers Rules
 ##########################################
 
+dotnet_diagnostic.ATC210.max_line_length = 100
+
 dotnet_diagnostic.CA1014.severity = none    #
 dotnet_diagnostic.CA1859.severity = none    #
 

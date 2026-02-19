@@ -4,8 +4,7 @@ public sealed class MessageRequestBuilderTests
 {
     private readonly IContractSerializer serializer = Substitute.For<IContractSerializer>();
 
-    private MessageRequestBuilder CreateSut(
-        string? pathTemplate = null)
+    private MessageRequestBuilder CreateSut(string? pathTemplate = null)
         => new(pathTemplate ?? "api/", serializer);
 
     [Fact]
@@ -134,7 +133,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Replace_Query_Parameters_With_Enum_Member_Value(string template)
+    public void Should_Replace_Query_Parameters_With_Enum_Member_Value(
+        string template)
     {
         const OperatorRole operatorRole = OperatorRole.Owner;
         var sut = CreateSut(template);
@@ -151,7 +151,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Replace_Query_Parameters_With_Enum_Without_EnumMember_Attribute(string template)
+    public void Should_Replace_Query_Parameters_With_Enum_Without_EnumMember_Attribute(
+        string template)
     {
         // OperatorRole.None does not have an EnumMember attribute, so it should fall back to ToString()
         const OperatorRole operatorRole = OperatorRole.None;
@@ -205,7 +206,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Replace_Query_Parameters_With_DateTimeOffset(string template)
+    public void Should_Replace_Query_Parameters_With_DateTimeOffset(
+        string template)
     {
         var from = DateTimeOffset.UtcNow;
 
@@ -313,8 +315,7 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Omit_Query_Parameters_With_Empty_Array(
-        string template)
+    public void Should_Omit_Query_Parameters_With_Empty_Array(string template)
     {
         var sut = CreateSut(template);
 
@@ -330,8 +331,7 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Omit_Query_Parameters_With_Empty_List(
-        string template)
+    public void Should_Omit_Query_Parameters_With_Empty_List(string template)
     {
         var sut = CreateSut(template);
 
@@ -408,7 +408,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Replace_Query_Parameters_With_Array_Containing_Special_Characters(string template)
+    public void Should_Replace_Query_Parameters_With_Array_Containing_Special_Characters(
+        string template)
     {
         var sut = CreateSut(template);
 
@@ -425,7 +426,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Replace_Query_Parameters_With_Single_Item_Array(string template)
+    public void Should_Replace_Query_Parameters_With_Single_Item_Array(
+        string template)
     {
         var sut = CreateSut(template);
 
@@ -443,7 +445,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Handle_Query_Parameters_With_Nullable_Enum(string template)
+    public void Should_Handle_Query_Parameters_With_Nullable_Enum(
+        string template)
     {
         OperatorRole? nullableRole = OperatorRole.Admin;
         var sut = CreateSut(template);
@@ -460,7 +463,8 @@ public sealed class MessageRequestBuilderTests
 
     [Theory]
     [InlineAutoNSubstituteData("/api")]
-    public void Should_Omit_Query_Parameters_With_Null_Nullable_Enum(string template)
+    public void Should_Omit_Query_Parameters_With_Null_Nullable_Enum(
+        string template)
     {
         OperatorRole? nullableRole = null;
         var sut = CreateSut(template);

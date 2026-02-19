@@ -4,7 +4,8 @@ public sealed class MessageRequestBuilderMultipartTests
 {
     private readonly IContractSerializer serializer = Substitute.For<IContractSerializer>();
 
-    private MessageRequestBuilder CreateSut(string template = "/test") => new(template, serializer);
+    private MessageRequestBuilder CreateSut(string template = "/test")
+        => new(template, serializer);
 
     [Fact]
     public void WithFile_AddsFileToRequest()

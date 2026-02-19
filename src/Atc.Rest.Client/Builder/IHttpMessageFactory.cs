@@ -17,14 +17,12 @@ public interface IHttpMessageFactory
     /// that will be replaced with real values passed to the <see cref="IMessageRequestBuilder.WithPathParameter(string, object?)"/>
     /// method.</param>
     /// <returns>A new <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder FromTemplate(
-        string pathTemplate);
+    IMessageRequestBuilder FromTemplate(string pathTemplate);
 
     /// <summary>
     /// Creates a message response builder from an HTTP response message.
     /// </summary>
     /// <param name="response">The HTTP response message to process. Can be null.</param>
     /// <returns>A new <see cref="IMessageResponseBuilder"/>.</returns>
-    IMessageResponseBuilder FromResponse(
-        HttpResponseMessage? response);
+    IMessageResponseBuilder FromResponse(HttpResponseMessage? response);
 }

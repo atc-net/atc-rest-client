@@ -26,7 +26,9 @@ public class RestClientDeserializationException : Exception
     /// </summary>
     /// <param name="message">The error message.</param>
     /// <param name="innerException">The inner exception that caused deserialization to fail.</param>
-    public RestClientDeserializationException(string message, Exception innerException)
+    public RestClientDeserializationException(
+        string message,
+        Exception innerException)
         : base(message, innerException)
     {
     }

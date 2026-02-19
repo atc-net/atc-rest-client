@@ -147,8 +147,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         return formDataContent;
     }
 
-    public IMessageRequestBuilder WithBody<TBody>(
-        TBody body)
+    public IMessageRequestBuilder WithBody<TBody>(TBody body)
     {
         if (body is null)
         {
@@ -322,16 +321,16 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     /// <summary>
     /// Gets the EnumMemberAttribute value for an enum member, using a cache to avoid repeated reflection.
     /// </summary>
-    private static string? GetEnumMemberValue(Type enumType, string memberName)
-    {
-        return EnumMemberCache.GetOrAdd((enumType, memberName), key =>
+    private static string? GetEnumMemberValue(
+        Type enumType,
+        string memberName)
+        => EnumMemberCache.GetOrAdd((enumType, memberName), key =>
             key.EnumType
                 .GetTypeInfo()
                 .DeclaredMembers
                 .FirstOrDefault(x => x.Name == key.MemberName)
                 ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
                 ?.Value);
-    }
 
     private Uri BuildRequestUri()
     {
@@ -362,7 +361,8 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     /// These values are emitted as-is without additional URI encoding.
     /// Regular keys have their values URI-encoded to ensure proper escaping.
     /// </remarks>
-    private static string BuildQueryKeyEqualValue(KeyValuePair<string, string> pair)
+    private static string BuildQueryKeyEqualValue(
+        KeyValuePair<string, string> pair)
         => pair.Key.StartsWith("#", StringComparison.Ordinal)
             ? $"{pair.Key.Replace("#", string.Empty)}={pair.Value}"
             : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
