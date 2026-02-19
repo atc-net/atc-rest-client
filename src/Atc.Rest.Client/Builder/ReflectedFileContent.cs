@@ -26,9 +26,30 @@ internal sealed class ReflectedFileContent : IFileContent
     public Stream OpenReadStream()
     {
         var parameters = openReadStreamMethod.GetParameters();
-        var args = parameters.Length > 0
-            ? parameters.Select(p => p.DefaultValue).ToArray()
-            : null;
+        object?[]? args = null;
+
+        if (parameters.Length > 0)
+        {
+            args = new object?[parameters.Length];
+
+            if (parameters.Length == 2 &&
+                parameters[0].ParameterType == typeof(long) &&
+                parameters[1].ParameterType == typeof(CancellationToken))
+            {
+                args[0] = long.MaxValue;
+                args[1] = CancellationToken.None;
+            }
+            else
+            {
+                for (var i = 0; i < parameters.Length; i++)
+                {
+                    var defaultValue = parameters[i].DefaultValue;
+                    args[i] = ReferenceEquals(defaultValue, Missing.Value)
+                        ? Type.Missing
+                        : defaultValue;
+                }
+            }
+        }
 
         return (Stream)openReadStreamMethod.Invoke(target, args)!;
     }

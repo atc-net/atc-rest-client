@@ -127,9 +127,10 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         {
             byte[] bytes;
             using (var stream = fileContent.OpenReadStream())
-            using (var binaryReader = new BinaryReader(stream))
             {
-                bytes = binaryReader.ReadBytes((int)stream.Length);
+                using var memoryStream = new MemoryStream();
+                stream.CopyTo(memoryStream);
+                bytes = memoryStream.ToArray();
             }
 
             var bytesContent = new ByteArrayContent(bytes);
