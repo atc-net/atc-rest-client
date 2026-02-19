@@ -282,7 +282,7 @@ public class MyFile : IFileContent
 {
     public string FileName { get; init; }
     public string? ContentType { get; init; }
-    public Stream OpenReadStream() => File.OpenRead(path);
+    public Stream OpenReadStream() => File.OpenRead(FileName);
 }
 
 var requestBuilder = messageFactory.FromTemplate("/api/files/upload");
