@@ -1,4 +1,4 @@
-namespace Atc.Rest.Client.Tests.Builder;
+namespace Atc.Rest.Client.Tests.TestTypes;
 
 public enum OperatorRole
 {

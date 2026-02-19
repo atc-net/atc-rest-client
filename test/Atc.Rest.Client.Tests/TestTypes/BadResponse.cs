@@ -1,4 +1,4 @@
-namespace Atc.Rest.Client.Tests;
+namespace Atc.Rest.Client.Tests.TestTypes;
 
 public class BadResponse
 {

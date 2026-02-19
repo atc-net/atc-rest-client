@@ -139,34 +139,4 @@ public sealed class JsonSerializerOptionsExtensionsTests
         source.Converters.Should().HaveCount(1);
         source.Converters[0].Should().BeSameAs(converter);
     }
-
-    private sealed class CustomTestConverter : JsonConverter<string>
-    {
-        public override string? Read(
-            ref Utf8JsonReader reader,
-            Type typeToConvert,
-            JsonSerializerOptions options)
-            => reader.GetString();
-
-        public override void Write(
-            Utf8JsonWriter writer,
-            string value,
-            JsonSerializerOptions options)
-            => writer.WriteStringValue(value);
-    }
-
-    private sealed class AnotherTestConverter : JsonConverter<int>
-    {
-        public override int Read(
-            ref Utf8JsonReader reader,
-            Type typeToConvert,
-            JsonSerializerOptions options)
-            => reader.GetInt32();
-
-        public override void Write(
-            Utf8JsonWriter writer,
-            int value,
-            JsonSerializerOptions options)
-            => writer.WriteNumberValue(value);
-    }
 }

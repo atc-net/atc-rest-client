@@ -1,3 +1,4 @@
+#pragma warning disable IDE0230
 namespace Atc.Rest.Client.Tests.Builder;
 
 public sealed class MessageRequestBuilderFileContentTests
@@ -210,76 +211,101 @@ public sealed class MessageRequestBuilderFileContentTests
         serializer.Received(1).Serialize(notAFile);
     }
 
-    private sealed class TestFileContent : IFileContent
+    [Fact]
+    public void DuckTyping_IBrowserFileShape_PassesLongMaxValueAsMaxAllowedSize()
     {
-        private readonly byte[] data;
+        // Arrange
+        var sut = CreateSut();
+        var browserFile = new CapturingBrowserFileLike("doc.pdf", "application/pdf", [1, 2, 3]);
 
-        public TestFileContent(
-            string fileName,
-            string? contentType,
-            byte[] data)
-        {
-            FileName = fileName;
-            ContentType = contentType;
-            this.data = data;
-        }
+        // Act
+        sut.WithBody(browserFile);
+        sut.Build(HttpMethod.Post);
 
-        public string FileName { get; }
-
-        public string? ContentType { get; }
-
-        public Stream OpenReadStream() => new MemoryStream(data);
+        // Assert — ReflectedFileContent must pass long.MaxValue, not the 512000 default
+        browserFile.CapturedMaxAllowedSize.Should().Be(long.MaxValue);
     }
 
-    /// <summary>
-    /// Mimics the shape of IFormFile: FileName property + parameterless OpenReadStream().
-    /// </summary>
-    [SuppressMessage("Design", "CA1024:Use properties where appropriate", Justification = "Mimics IFormFile.OpenReadStream() method shape for duck-typing test")]
-    internal sealed class FormFileLike
+    [Fact]
+    public void DuckTyping_IBrowserFileShape_PassesCancellationTokenNone()
     {
-        private readonly byte[] data;
+        // Arrange
+        var sut = CreateSut();
+        var browserFile = new CapturingBrowserFileLike("doc.pdf", "application/pdf", [1, 2, 3]);
 
-        public FormFileLike(
-            string fileName,
-            string contentType,
-            byte[] data)
-        {
-            FileName = fileName;
-            ContentType = contentType;
-            this.data = data;
-        }
+        // Act
+        sut.WithBody(browserFile);
+        sut.Build(HttpMethod.Post);
 
-        public string FileName { get; }
-
-        public string ContentType { get; }
-
-        public Stream OpenReadStream() => new MemoryStream(data);
+        // Assert
+        browserFile.CapturedCancellationToken.Should().Be(CancellationToken.None);
     }
 
-    /// <summary>
-    /// Mimics the shape of IBrowserFile: Name property + OpenReadStream(long, CancellationToken) with defaults.
-    /// </summary>
-    [SuppressMessage("Design", "CA1024:Use properties where appropriate", Justification = "Mimics IBrowserFile.OpenReadStream() method shape for duck-typing test")]
-    internal sealed class BrowserFileLike
+    [Fact]
+    public void WithBody_IFileContent_NonSeekableStream_ProducesMultipartContent()
     {
-        private readonly byte[] data;
+        // Arrange
+        var sut = CreateSut();
+        var fileContent = new NonSeekableFileContent("stream.bin", "application/octet-stream", [10, 20, 30]);
 
-        public BrowserFileLike(
-            string name,
-            string contentType,
-            byte[] data)
-        {
-            Name = name;
-            ContentType = contentType;
-            this.data = data;
-        }
+        // Act
+        sut.WithBody(fileContent);
+        var message = sut.Build(HttpMethod.Post);
 
-        public string Name { get; }
+        // Assert — CopyTo must work even when the stream does not support Length/Position
+        message.Content.Should().BeOfType<MultipartFormDataContent>();
+    }
 
-        public string ContentType { get; }
+    [Fact]
+    public async Task WithBody_IFileContent_NonSeekableStream_ContainsCorrectBytes()
+    {
+        // Arrange
+        var sut = CreateSut();
+        byte[] data = [10, 20, 30];
+        var fileContent = new NonSeekableFileContent("stream.bin", "application/octet-stream", data);
 
-        public Stream OpenReadStream(
-            long maxAllowedSize = 512000,
-            CancellationToken cancellationToken = default) => new MemoryStream(data);
+        // Act
+        sut.WithBody(fileContent);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        var multipart = (MultipartFormDataContent)message.Content!;
+        var bytes = await multipart.First().ReadAsByteArrayAsync();
+        bytes.Should().BeEquivalentTo(data);
+    }
+
+    [Fact]
+    public async Task WithBody_IFileContent_EmptyStream_ProducesEmptyContent()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var fileContent = new NonSeekableFileContent("empty.bin", null, []);
+
+        // Act
+        sut.WithBody(fileContent);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        var multipart = (MultipartFormDataContent)message.Content!;
+        var bytes = await multipart.First().ReadAsByteArrayAsync();
+        bytes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DuckTyping_NonSeekableBrowserFileLike_ContainsCorrectBytes()
+    {
+        // Arrange — end-to-end: duck-typing + long.MaxValue + non-seekable stream
+        var sut = CreateSut();
+        byte[] data = [99, 100, 101, 102];
+        var browserFile = new NonSeekableBrowserFileLike("blob.dat", "application/octet-stream", data);
+
+        // Act
+        sut.WithBody(browserFile);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        var multipart = (MultipartFormDataContent)message.Content!;
+        var bytes = await multipart.First().ReadAsByteArrayAsync();
+        bytes.Should().BeEquivalentTo(data);
     }
 }
