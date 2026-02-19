@@ -1,6 +1,5 @@
 namespace Atc.Rest.Client.Tests.Serialization;
 
-[SuppressMessage("Design", "CA1034:Nested types should not be visible", Justification = "Test helper types")]
 public sealed class DefaultJsonContractSerializerTests
 {
     private readonly DefaultJsonContractSerializer sut = new();
@@ -432,30 +431,5 @@ public sealed class DefaultJsonContractSerializerTests
 
         result.Should().NotBeNull();
         result!.Name.Should().Be("日本語テスト");
-    }
-
-    public sealed record TestModel(string Name, int Value);
-
-    public sealed record StatusContainer(TestStatus Status);
-
-    public enum TestStatus
-    {
-        Inactive,
-        Active,
-        Pending,
-    }
-
-    public sealed class CircularModel
-    {
-        public CircularModel? Self { get; set; }
-    }
-
-    public sealed record DateTimeModel(DateTimeOffset Timestamp);
-
-    public sealed record NestedModel(TestModel? Parent, TestModel? Child);
-
-    [SuppressMessage("Major Code Smell", "S2094:Classes should not be empty", Justification = "Test helper type")]
-    public sealed class EmptyModel
-    {
     }
 }

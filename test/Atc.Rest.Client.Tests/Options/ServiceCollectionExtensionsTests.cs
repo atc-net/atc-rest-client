@@ -366,9 +366,4 @@ public sealed class ServiceCollectionExtensionsTests
         factory.CreateClient("SecureClient").BaseAddress.Should().Be(httpsAddress);
         factory.CreateClient("InsecureClient").BaseAddress.Should().Be(httpAddress);
     }
-
-    [SuppressMessage("Major Code Smell", "S2094:Classes should not be empty", Justification = "Test helper type")]
-    private sealed class TestOptions : AtcRestClientOptions
-    {
-    }
 }

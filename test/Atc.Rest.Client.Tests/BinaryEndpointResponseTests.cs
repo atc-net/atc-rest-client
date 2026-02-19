@@ -146,23 +146,4 @@ public sealed class BinaryEndpointResponseTests
         sut.IsSuccess.Should().BeTrue();
         sut.ErrorContent.Should().BeNull();
     }
-
-    private sealed class TestableBinaryEndpointResponse : BinaryEndpointResponse
-    {
-        public TestableBinaryEndpointResponse(
-            bool isSuccess,
-            HttpStatusCode statusCode,
-            byte[]? content,
-            string? contentType,
-            string? fileName,
-            long? contentLength)
-            : base(isSuccess, statusCode, content, contentType, fileName, contentLength)
-        {
-        }
-
-        public InvalidOperationException GetInvalidContentAccessException(
-            HttpStatusCode expectedStatusCode,
-            string propertyName)
-            => InvalidContentAccessException(expectedStatusCode, propertyName);
-    }
 }

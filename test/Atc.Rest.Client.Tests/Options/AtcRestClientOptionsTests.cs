@@ -60,11 +60,4 @@ public sealed class AtcRestClientOptionsTests
         sut.BaseAddress.Should().Be(new Uri("https://override.example.com"));
         sut.Timeout.Should().Be(TimeSpan.FromMinutes(2));
     }
-
-    private sealed class DerivedOptions : AtcRestClientOptions
-    {
-        public override Uri? BaseAddress { get; set; } = new Uri("https://override.example.com");
-
-        public override TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(2);
-    }
 }

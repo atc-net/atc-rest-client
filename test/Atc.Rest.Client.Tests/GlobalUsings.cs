@@ -8,4 +8,5 @@ global using Atc.Rest.Client;
 global using Atc.Rest.Client.Builder;
 global using Atc.Rest.Client.Options;
 global using Atc.Rest.Client.Serialization;
+global using Atc.Rest.Client.Tests.TestTypes;
 global using Microsoft.Extensions.DependencyInjection;
