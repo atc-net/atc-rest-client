@@ -16,7 +16,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private readonly Dictionary<string, string> formFields;
     private readonly List<(Stream Stream, string Name, string FileName, string? ContentType)> streamFiles;
     private string? content;
-    private List<IFormFile>? contentFormFiles;
+    private List<IFileContent>? contentFormFiles;
     private (Stream Stream, string ContentType)? binaryContent;
 
     public MessageRequestBuilder(
@@ -123,16 +123,22 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     {
         var formDataContent = new MultipartFormDataContent();
 
-        foreach (var formFile in contentFormFiles!)
+        foreach (var fileContent in contentFormFiles!)
         {
             byte[] bytes;
-            using (var binaryReader = new BinaryReader(formFile.OpenReadStream()))
+            using (var stream = fileContent.OpenReadStream())
+            using (var binaryReader = new BinaryReader(stream))
             {
-                bytes = binaryReader.ReadBytes((int)formFile.OpenReadStream().Length);
+                bytes = binaryReader.ReadBytes((int)stream.Length);
             }
 
             var bytesContent = new ByteArrayContent(bytes);
-            formDataContent.Add(bytesContent, "Request", formFile.FileName);
+            if (fileContent.ContentType is not null)
+            {
+                bytesContent.Headers.ContentType = MediaTypeHeaderValue.Parse(fileContent.ContentType);
+            }
+
+            formDataContent.Add(bytesContent, "Request", fileContent.FileName);
         }
 
         message.Headers.Remove("accept");
@@ -151,18 +157,26 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
         switch (body)
         {
-            case IFormFile formFile:
-                contentFormFiles = new List<IFormFile>
-                {
-                    formFile,
-                };
+            case IFileContent fileContent:
+                contentFormFiles = [fileContent];
                 break;
-            case List<IFormFile> formFiles:
-                contentFormFiles = new List<IFormFile>();
-                contentFormFiles.AddRange(formFiles);
+            case List<IFileContent> fileContents:
+                contentFormFiles = new List<IFileContent>(fileContents);
                 break;
             default:
-                content = serializer.Serialize(body);
+                if (TryWrapAsFileContent(body, out var wrapped))
+                {
+                    contentFormFiles = [wrapped];
+                }
+                else if (TryWrapAsFileContentList(body, out var wrappedList))
+                {
+                    contentFormFiles = wrappedList;
+                }
+                else
+                {
+                    content = serializer.Serialize(body);
+                }
+
                 break;
         }
 
@@ -417,5 +431,96 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     {
         HttpCompletionOption = completionOption;
         return this;
+    }
+
+    private static bool TryWrapAsFileContent(
+        object obj,
+        [NotNullWhen(true)] out IFileContent? fileContent)
+    {
+        fileContent = null;
+
+        var type = obj.GetType();
+
+        var fileNameProp = type.GetProperty("FileName", typeof(string))
+                           ?? type.GetProperty("Name", typeof(string));
+        if (fileNameProp is null)
+        {
+            return false;
+        }
+
+        var openReadStreamMethod = FindOpenReadStreamMethod(type);
+        if (openReadStreamMethod is null)
+        {
+            return false;
+        }
+
+        var contentTypeProp = type.GetProperty("ContentType", typeof(string));
+
+        fileContent = new ReflectedFileContent(obj, fileNameProp, contentTypeProp, openReadStreamMethod);
+        return true;
+    }
+
+    private static bool TryWrapAsFileContentList(
+        object obj,
+        [NotNullWhen(true)] out List<IFileContent>? fileContents)
+    {
+        fileContents = null;
+
+        if (obj is not IEnumerable enumerable)
+        {
+            return false;
+        }
+
+        List<IFileContent>? result = null;
+        foreach (var item in enumerable)
+        {
+            if (item is null || !TryWrapAsFileContent(item, out var wrapped))
+            {
+                return false;
+            }
+
+            result ??= [];
+            result.Add(wrapped);
+        }
+
+        if (result is null or { Count: 0 })
+        {
+            return false;
+        }
+
+        fileContents = result;
+        return true;
+    }
+
+    private static MethodInfo? FindOpenReadStreamMethod(Type type)
+    {
+        // Prefer parameterless OpenReadStream() (matches IFormFile)
+        var method = type.GetMethod("OpenReadStream", Type.EmptyTypes);
+        if (method is not null && typeof(Stream).IsAssignableFrom(method.ReturnType))
+        {
+            return method;
+        }
+
+        // Fall back to OpenReadStream where all parameters are optional (matches IBrowserFile)
+        foreach (var candidate in type.GetMethods())
+        {
+            if (!string.Equals(candidate.Name, "OpenReadStream", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!typeof(Stream).IsAssignableFrom(candidate.ReturnType))
+            {
+                continue;
+            }
+
+            var parameters = candidate.GetParameters();
+            if (parameters.Length > 0 && parameters.All(p => p.IsOptional))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 }

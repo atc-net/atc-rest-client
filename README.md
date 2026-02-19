@@ -21,6 +21,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [📤 POST Request with Body](#-post-request-with-body)
     - [🔗 Using Path and Query Parameters](#-using-path-and-query-parameters)
     - [📎 File Upload (Multipart Form Data)](#-file-upload-multipart-form-data)
+    - [📁 File Upload with IFileContent](#-file-upload-with-ifilecontent)
     - [📤 Binary Upload (Raw Stream)](#-binary-upload-raw-stream)
     - [💾 File Download (Binary Response)](#-file-download-binary-response)
     - [🌊 Streaming Responses (IAsyncEnumerable)](#-streaming-responses-iasyncenumerable)
@@ -269,6 +270,49 @@ requestBuilder.WithFiles(files);
 
 using var request = requestBuilder.Build(HttpMethod.Post);
 ```
+
+### 📁 File Upload with IFileContent
+
+For file uploads via `WithBody()`, implement the `IFileContent` interface:
+
+```csharp
+using Atc.Rest.Client;
+
+public class MyFile : IFileContent
+{
+    public string FileName { get; init; }
+    public string? ContentType { get; init; }
+    public Stream OpenReadStream() => File.OpenRead(path);
+}
+
+var requestBuilder = messageFactory.FromTemplate("/api/files/upload");
+requestBuilder.WithBody(new MyFile { FileName = "report.pdf", ContentType = "application/pdf" });
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+using var response = await client.SendAsync(request, cancellationToken);
+```
+
+`WithBody()` also accepts `List<IFileContent>` for multi-file uploads.
+
+> **Platform compatibility:** `WithBody()` automatically detects file-like objects that have
+> a `FileName` (or `Name`) property and an `OpenReadStream()` method. This means ASP.NET Core
+> `IFormFile` and Blazor `IBrowserFile` objects work without any additional packages or adapters:
+>
+> ```csharp
+> // ASP.NET Core controller - works automatically
+> public async Task<IActionResult> Upload(IFormFile file)
+> {
+>     requestBuilder.WithBody(file);
+> }
+>
+> // Blazor WASM component - works automatically
+> private async Task OnFileSelected(InputFileChangeEventArgs e)
+> {
+>     requestBuilder.WithBody(e.File);
+> }
+> ```
+>
+> For compile-time type safety, implement `IFileContent` explicitly.
 
 ### 📤 Binary Upload (Raw Stream)
 
@@ -551,6 +595,21 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithFormField(string name, string value);
 }
 ```
+
+> **`IFileContent` interface:**
+>
+> ```csharp
+> public interface IFileContent
+> {
+>     string FileName { get; }
+>     string? ContentType { get; }
+>     Stream OpenReadStream();
+> }
+> ```
+>
+> Used with `WithBody<TBody>()` for file uploads. Objects passed to `WithBody()` that have
+> a `FileName`/`Name` property and an `OpenReadStream()` method are automatically detected
+> and uploaded as multipart form data — no explicit `IFileContent` implementation required.
 
 #### `IMessageResponseBuilder`
 
