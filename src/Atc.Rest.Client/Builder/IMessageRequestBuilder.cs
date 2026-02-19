@@ -17,7 +17,9 @@ public interface IMessageRequestBuilder
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null or whitespace.</exception>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithPathParameter(string name, object? value);
+    IMessageRequestBuilder WithPathParameter(
+        string name,
+        object? value);
 
     /// <summary>
     /// Adds a value to a header parameter in the headers.
@@ -26,7 +28,9 @@ public interface IMessageRequestBuilder
     /// <param name="value">Value to use as the header parameter.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithHeaderParameter(string name, object? value);
+    IMessageRequestBuilder WithHeaderParameter(
+        string name,
+        object? value);
 
     /// <summary>
     /// Adds a query parameter to the created request URL.
@@ -38,7 +42,9 @@ public interface IMessageRequestBuilder
     /// <param name="value">Value of the query parameter.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithQueryParameter(string name, string? value);
+    IMessageRequestBuilder WithQueryParameter(
+        string name,
+        string? value);
 
     /// <summary>
     /// Adds a query parameter with multiple values to the created request URL.
@@ -51,7 +57,9 @@ public interface IMessageRequestBuilder
     /// <param name="values">Collection of values for the query parameter.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithQueryParameter(string name, IEnumerable? values);
+    IMessageRequestBuilder WithQueryParameter(
+        string name,
+        IEnumerable? values);
 
     /// <summary>
     /// Adds a query parameter to the created request URL.
@@ -64,7 +72,9 @@ public interface IMessageRequestBuilder
     /// <param name="value">Value of the query parameter.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="name"/> is null or whitespace.</exception>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithQueryParameter(string name, object? value);
+    IMessageRequestBuilder WithQueryParameter(
+        string name,
+        object? value);
 
     /// <summary>
     /// Adds the body of the request.
@@ -87,7 +97,9 @@ public interface IMessageRequestBuilder
     /// <param name="stream">The stream to send as the request body.</param>
     /// <param name="contentType">Optional content type. Defaults to application/octet-stream.</param>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithBinaryBody(Stream stream, string? contentType = null);
+    IMessageRequestBuilder WithBinaryBody(
+        Stream stream,
+        string? contentType = null);
 
     /// <summary>
     /// Builds a <see cref="HttpRequestMessage"/> with the added content.
@@ -102,7 +114,8 @@ public interface IMessageRequestBuilder
     /// </summary>
     /// <param name="completionOption">The HTTP completion option.</param>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithHttpCompletionOption(HttpCompletionOption completionOption);
+    IMessageRequestBuilder WithHttpCompletionOption(
+        HttpCompletionOption completionOption);
 
     /// <summary>
     /// Gets the HTTP completion option set for this request.
@@ -117,14 +130,19 @@ public interface IMessageRequestBuilder
     /// <param name="fileName">The file name.</param>
     /// <param name="contentType">Optional content type. Defaults to application/octet-stream.</param>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);
+    IMessageRequestBuilder WithFile(
+        Stream stream,
+        string name,
+        string fileName,
+        string? contentType = null);
 
     /// <summary>
     /// Adds multiple files to the multipart form data content.
     /// </summary>
     /// <param name="files">Collection of files with Stream, Name, FileName, and optional ContentType.</param>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithFiles(IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files);
+    IMessageRequestBuilder WithFiles(
+        IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files);
 
     /// <summary>
     /// Adds a form field to the multipart form data content.
@@ -132,5 +150,7 @@ public interface IMessageRequestBuilder
     /// <param name="name">The form field name.</param>
     /// <param name="value">The form field value.</param>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
-    IMessageRequestBuilder WithFormField(string name, string value);
+    IMessageRequestBuilder WithFormField(
+        string name,
+        string value);
 }

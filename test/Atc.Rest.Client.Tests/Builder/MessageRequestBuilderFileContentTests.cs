@@ -4,7 +4,8 @@ public sealed class MessageRequestBuilderFileContentTests
 {
     private readonly IContractSerializer serializer = Substitute.For<IContractSerializer>();
 
-    private MessageRequestBuilder CreateSut(string template = "/test") => new(template, serializer);
+    private MessageRequestBuilder CreateSut(string template = "/test")
+        => new(template, serializer);
 
     [Fact]
     public void WithBody_IFileContent_Single_ProducesMultipartContent()
@@ -213,7 +214,10 @@ public sealed class MessageRequestBuilderFileContentTests
     {
         private readonly byte[] data;
 
-        public TestFileContent(string fileName, string? contentType, byte[] data)
+        public TestFileContent(
+            string fileName,
+            string? contentType,
+            byte[] data)
         {
             FileName = fileName;
             ContentType = contentType;
@@ -235,7 +239,10 @@ public sealed class MessageRequestBuilderFileContentTests
     {
         private readonly byte[] data;
 
-        public FormFileLike(string fileName, string contentType, byte[] data)
+        public FormFileLike(
+            string fileName,
+            string contentType,
+            byte[] data)
         {
             FileName = fileName;
             ContentType = contentType;
@@ -257,7 +264,10 @@ public sealed class MessageRequestBuilderFileContentTests
     {
         private readonly byte[] data;
 
-        public BrowserFileLike(string name, string contentType, byte[] data)
+        public BrowserFileLike(
+            string name,
+            string contentType,
+            byte[] data)
         {
             Name = name;
             ContentType = contentType;
@@ -268,6 +278,8 @@ public sealed class MessageRequestBuilderFileContentTests
 
         public string ContentType { get; }
 
-        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) => new MemoryStream(data);
+        public Stream OpenReadStream(
+            long maxAllowedSize = 512000,
+            CancellationToken cancellationToken = default) => new MemoryStream(data);
     }
 }

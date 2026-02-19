@@ -91,7 +91,8 @@ public sealed class HttpMessageFactoryTests
     [InlineData(HttpStatusCode.Created)]
     [InlineData(HttpStatusCode.BadRequest)]
     [InlineData(HttpStatusCode.InternalServerError)]
-    public void FromResponse_AcceptsVariousStatusCodes(HttpStatusCode statusCode)
+    public void FromResponse_AcceptsVariousStatusCodes(
+        HttpStatusCode statusCode)
     {
         // Arrange
         var sut = CreateSut();

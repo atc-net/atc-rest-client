@@ -96,7 +96,9 @@ public sealed class MessageResponseBuilderBinaryTests
     [InlineData(HttpStatusCode.BadRequest, false)]
     [InlineData(HttpStatusCode.NotFound, false)]
     [InlineData(HttpStatusCode.InternalServerError, false)]
-    public async Task BuildBinaryResponseAsync_RespectsHttpStatusCode(HttpStatusCode statusCode, bool expectedSuccess)
+    public async Task BuildBinaryResponseAsync_RespectsHttpStatusCode(
+        HttpStatusCode statusCode,
+        bool expectedSuccess)
     {
         // Arrange
         using var response = new HttpResponseMessage(statusCode)
@@ -207,7 +209,9 @@ public sealed class MessageResponseBuilderBinaryTests
     [InlineData(HttpStatusCode.BadRequest, false)]
     [InlineData(HttpStatusCode.Unauthorized, false)]
     [InlineData(HttpStatusCode.InternalServerError, false)]
-    public async Task BuildStreamBinaryResponseAsync_RespectsHttpStatusCode(HttpStatusCode statusCode, bool expectedSuccess)
+    public async Task BuildStreamBinaryResponseAsync_RespectsHttpStatusCode(
+        HttpStatusCode statusCode,
+        bool expectedSuccess)
     {
         // Arrange
         using var response = new HttpResponseMessage(statusCode)

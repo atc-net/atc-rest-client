@@ -33,8 +33,7 @@ public class DefaultJsonContractSerializer : IContractSerializer
     /// </summary>
     /// <param name="value">The object to serialize.</param>
     /// <returns>A JSON string representation of the object.</returns>
-    public string Serialize(
-        object value)
+    public string Serialize(object value)
         => JsonSerializer.Serialize(
             value,
             options);
@@ -45,8 +44,7 @@ public class DefaultJsonContractSerializer : IContractSerializer
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <param name="json">The JSON string to deserialize.</param>
     /// <returns>The deserialized object, or null if deserialization fails.</returns>
-    public T? Deserialize<T>(
-        string json)
+    public T? Deserialize<T>(string json)
         => JsonSerializer.Deserialize<T>(
             json,
             options);
@@ -57,8 +55,7 @@ public class DefaultJsonContractSerializer : IContractSerializer
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <param name="utf8Json">The UTF-8 encoded JSON byte array.</param>
     /// <returns>The deserialized object, or null if deserialization fails.</returns>
-    public T? Deserialize<T>(
-        byte[] utf8Json)
+    public T? Deserialize<T>(byte[] utf8Json)
         => JsonSerializer.Deserialize<T>(
             utf8Json,
             options);
@@ -84,7 +81,8 @@ public class DefaultJsonContractSerializer : IContractSerializer
     /// <param name="returnType">The type to deserialize to.</param>
     /// <returns>The deserialized object, or null if deserialization fails.</returns>
     public object? Deserialize(
-        byte[] utf8Json, Type returnType)
+        byte[] utf8Json,
+        Type returnType)
         => JsonSerializer.Deserialize(
             utf8Json,
             returnType,

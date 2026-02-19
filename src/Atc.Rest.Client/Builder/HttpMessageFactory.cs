@@ -4,20 +4,17 @@ internal class HttpMessageFactory : IHttpMessageFactory
 {
     private readonly IContractSerializer serializer;
 
-    public HttpMessageFactory(
-        IContractSerializer serializer)
+    public HttpMessageFactory(IContractSerializer serializer)
     {
         this.serializer = serializer;
     }
 
-    public IMessageRequestBuilder FromTemplate(
-        string pathTemplate)
+    public IMessageRequestBuilder FromTemplate(string pathTemplate)
         => new MessageRequestBuilder(
             pathTemplate,
             serializer);
 
-    public IMessageResponseBuilder FromResponse(
-        HttpResponseMessage? response)
+    public IMessageResponseBuilder FromResponse(HttpResponseMessage? response)
         => new MessageResponseBuilder(
             response,
             serializer);

@@ -223,7 +223,8 @@ public sealed class MessageResponseBuilderStreamingTests
     [InlineData(HttpStatusCode.OK)]
     [InlineData(HttpStatusCode.Created)]
     [InlineData(HttpStatusCode.Accepted)]
-    public async Task BuildStreamingResponseAsync_SuccessStatusCodes_YieldItems(HttpStatusCode statusCode)
+    public async Task BuildStreamingResponseAsync_SuccessStatusCodes_YieldItems(
+        HttpStatusCode statusCode)
     {
         // Arrange
         using var response = new HttpResponseMessage(statusCode)
@@ -252,7 +253,8 @@ public sealed class MessageResponseBuilderStreamingTests
     [InlineData(HttpStatusCode.BadRequest)]
     [InlineData(HttpStatusCode.NotFound)]
     [InlineData(HttpStatusCode.InternalServerError)]
-    public async Task BuildStreamingResponseAsync_ErrorStatusCodes_YieldNoItems(HttpStatusCode statusCode)
+    public async Task BuildStreamingResponseAsync_ErrorStatusCodes_YieldNoItems(
+        HttpStatusCode statusCode)
     {
         // Arrange
         using var response = new HttpResponseMessage(statusCode)
