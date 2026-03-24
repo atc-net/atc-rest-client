@@ -324,6 +324,81 @@ public class EndpointResponseTests
             .WithMessage("*BadResponse*");
     }
 
+    [Fact]
+    public void InvalidContentAccessException_WithValueType_ContainsExpectedType()
+    {
+        // Arrange
+        var sut = new TestableEndpointResponse(
+            isSuccess: false,
+            HttpStatusCode.Conflict,
+            "{\"error\":\"conflict\"}",
+            new BadResponse(),
+            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+
+        // Act
+        var exception = sut.GetInvalidContentAccessException<Guid>(
+            HttpStatusCode.OK,
+            "OkContent");
+
+        // Assert
+        exception.Message.Should().Contain("Guid");
+    }
+
+    [Fact]
+    public void SuccessContent_WithValueType_Returns_Value_Upon_Success()
+    {
+        // Arrange
+        var expectedGuid = Guid.NewGuid();
+        var sut = new EndpointResponse<Guid>(
+            true,
+            HttpStatusCode.OK,
+            expectedGuid.ToString(),
+            expectedGuid,
+            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+
+        // Act & Assert
+        sut.SuccessContent.Should().Be(expectedGuid);
+    }
+
+    [Fact]
+    public void Constructor_WithValueTypeAndNullContent_ShouldSucceed()
+    {
+        // Arrange
+        var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal);
+
+        // Act
+        var sut = new EndpointResponse<Guid>(
+            false,
+            HttpStatusCode.BadRequest,
+            string.Empty,
+            null,
+            headers);
+
+        // Assert
+        sut.IsSuccess.Should().BeFalse();
+        sut.ContentObject.Should().BeNull();
+    }
+
+    [Fact]
+    public void SuccessContent_WithValueType_WhenContentObjectIsWrongType_ThrowsInvalidCastException()
+    {
+        // Arrange
+        var baseResponse = new EndpointResponse(
+            isSuccess: true,
+            HttpStatusCode.OK,
+            "content",
+            "not-a-guid",
+            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+        var sut = new EndpointResponse<Guid>(baseResponse);
+
+        // Act
+        var act = () => _ = sut.SuccessContent;
+
+        // Assert
+        act.Should().Throw<InvalidCastException>()
+            .WithMessage("*Guid*");
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.OK)]
     [InlineData(HttpStatusCode.Created)]
@@ -367,9 +442,9 @@ public class EndpointResponseTests
         // Arrange
         var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal)
         {
-            { "Content-Type", new[] { "application/json" } },
-            { "X-Request-Id", new[] { "12345" } },
-            { "X-Multi-Value", new[] { "a", "b", "c" } },
+            { "Content-Type", ["application/json"] },
+            { "X-Request-Id", ["12345"] },
+            { "X-Multi-Value", ["a", "b", "c"] },
         };
 
         // Act

@@ -75,9 +75,9 @@ public class EndpointResponse : IEndpointResponse
     /// <returns>The content object cast to the specified type.</returns>
     /// <exception cref="InvalidCastException">Thrown when the content object cannot be cast to the specified type.</exception>
     protected TResult CastContent<TResult>()
-        where TResult : class
-        => ContentObject as TResult ??
-           throw new InvalidCastException($"ContentObject is not of type {typeof(TResult).Name}");
+        => ContentObject is TResult result
+            ? result
+            : throw new InvalidCastException($"ContentObject is not of type {typeof(TResult).Name}");
 
     /// <summary>
     /// Creates an exception for invalid content access with detailed error information.
@@ -89,7 +89,6 @@ public class EndpointResponse : IEndpointResponse
     protected InvalidOperationException InvalidContentAccessException<TExpected>(
         HttpStatusCode expectedStatusCode,
         string propertyName)
-        where TExpected : class
     {
         var actualType = ContentObject?.GetType().Name ?? "null";
         var expectedType = typeof(TExpected).Name;
@@ -100,4 +99,4 @@ public class EndpointResponse : IEndpointResponse
             $"but got {(int)StatusCode} ({StatusCode}) with {actualType} content. " +
             $"Response: {Content}");
     }
-}
+}

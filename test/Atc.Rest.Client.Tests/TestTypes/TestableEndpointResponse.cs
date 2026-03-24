@@ -15,6 +15,5 @@ internal sealed class TestableEndpointResponse : EndpointResponse
     public InvalidOperationException GetInvalidContentAccessException<TExpected>(
         HttpStatusCode expectedStatusCode,
         string propertyName)
-        where TExpected : class
         => InvalidContentAccessException<TExpected>(expectedStatusCode, propertyName);
 }
