@@ -626,13 +626,10 @@ public interface IMessageResponseBuilder
         CancellationToken cancellationToken);
 
     Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
-        CancellationToken cancellationToken)
-        where TSuccessContent : class;
+        CancellationToken cancellationToken);
 
     Task<EndpointResponse<TSuccessContent, TErrorContent>> BuildResponseAsync<TSuccessContent, TErrorContent>(
-        CancellationToken cancellationToken)
-        where TSuccessContent : class
-        where TErrorContent : class;
+        CancellationToken cancellationToken);
 
     // 💾 Binary response support
     Task<BinaryEndpointResponse> BuildBinaryResponseAsync(CancellationToken cancellationToken);

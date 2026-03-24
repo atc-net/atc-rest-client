@@ -54,9 +54,8 @@ public interface IMessageResponseBuilder
     /// <typeparam name="TSuccessContent">The type of the success content.</typeparam>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>An <see cref="EndpointResponse{TSuccess}"/> with the typed success content.</returns>
-    Task<EndpointResponse<TSuccessContent>>
-        BuildResponseAsync<TSuccessContent>(CancellationToken cancellationToken)
-        where TSuccessContent : class;
+    Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Builds a typed endpoint response with both success and error content.
@@ -67,9 +66,7 @@ public interface IMessageResponseBuilder
     /// <returns>An <see cref="EndpointResponse{TSuccess, TError}"/> with the typed content.</returns>
     Task<EndpointResponse<TSuccessContent, TErrorContent>>
         BuildResponseAsync<TSuccessContent, TErrorContent>(
-            CancellationToken cancellationToken)
-        where TSuccessContent : class
-        where TErrorContent : class;
+            CancellationToken cancellationToken);
 
     /// <summary>
     /// Builds a binary response from the HTTP response.
@@ -151,4 +148,4 @@ public interface IMessageResponseBuilder
     /// <returns>A <see cref="StreamingEndpointResponse{T}"/> containing the streaming content and response metadata.</returns>
     Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
         CancellationToken cancellationToken = default);
-}
+}

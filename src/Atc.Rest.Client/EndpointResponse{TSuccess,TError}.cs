@@ -7,8 +7,6 @@ namespace Atc.Rest.Client;
 /// <typeparam name="TError">The type of the error content.</typeparam>
 public class EndpointResponse<TSuccess, TError>
     : EndpointResponse
-    where TSuccess : class
-    where TError : class
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="EndpointResponse{TSuccess, TError}"/> class by copying from another response.
@@ -27,6 +25,10 @@ public class EndpointResponse<TSuccess, TError>
     /// <param name="content">The raw response content as a string.</param>
     /// <param name="contentObject">The deserialized content object.</param>
     /// <param name="headers">The response headers.</param>
+    /// <remarks>
+    /// The <paramref name="contentObject"/> is typed as <see cref="object"/> to allow passing <see langword="null"/>
+    /// even when <typeparamref name="TSuccess"/> or <typeparamref name="TError"/> are value types (e.g., for failure responses).
+    /// </remarks>
     public EndpointResponse(
         bool isSuccess,
         HttpStatusCode statusCode,
@@ -40,10 +42,10 @@ public class EndpointResponse<TSuccess, TError>
     /// <summary>
     /// Gets the success content if the request was successful; otherwise, null.
     /// </summary>
-    public TSuccess? SuccessContent => IsSuccess ? CastContent<TSuccess>() : null;
+    public TSuccess? SuccessContent => IsSuccess ? CastContent<TSuccess>() : default;
 
     /// <summary>
     /// Gets the error content if the request failed; otherwise, null.
     /// </summary>
-    public TError? ErrorContent => !IsSuccess ? CastContent<TError>() : null;
-}
+    public TError? ErrorContent => !IsSuccess ? CastContent<TError>() : default;
+}

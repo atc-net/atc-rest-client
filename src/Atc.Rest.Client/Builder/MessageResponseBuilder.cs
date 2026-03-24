@@ -101,17 +101,14 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     }
 
     public Task<EndpointResponse<TSuccessContent>> BuildResponseAsync<TSuccessContent>(
-        CancellationToken cancellationToken)
-        where TSuccessContent : class =>
+        CancellationToken cancellationToken) =>
         BuildResponseAsync(
             r => new EndpointResponse<TSuccessContent>(r),
             cancellationToken);
 
     public Task<EndpointResponse<TSuccessContent, TErrorContent>>
         BuildResponseAsync<TSuccessContent, TErrorContent>(
-            CancellationToken cancellationToken)
-        where TSuccessContent : class
-        where TErrorContent : class =>
+            CancellationToken cancellationToken) =>
         BuildResponseAsync(
             r => new EndpointResponse<TSuccessContent, TErrorContent>(r),
             cancellationToken);

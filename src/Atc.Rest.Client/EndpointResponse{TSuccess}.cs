@@ -6,7 +6,6 @@ namespace Atc.Rest.Client;
 /// <typeparam name="TSuccess">The type of the success content.</typeparam>
 public class EndpointResponse<TSuccess>
     : EndpointResponse
-    where TSuccess : class
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="EndpointResponse{TSuccess}"/> class by copying from another response.
@@ -25,11 +24,15 @@ public class EndpointResponse<TSuccess>
     /// <param name="content">The raw response content as a string.</param>
     /// <param name="contentObject">The deserialized content object.</param>
     /// <param name="headers">The response headers.</param>
+    /// <remarks>
+    /// The <paramref name="contentObject"/> is typed as <see cref="object"/> to allow passing <see langword="null"/>
+    /// even when <typeparamref name="TSuccess"/> is a value type (e.g., for failure responses).
+    /// </remarks>
     public EndpointResponse(
         bool isSuccess,
         HttpStatusCode statusCode,
         string content,
-        TSuccess? contentObject,
+        object? contentObject,
         IReadOnlyDictionary<string, IEnumerable<string>> headers)
         : base(isSuccess, statusCode, content, contentObject, headers)
     {
@@ -38,5 +41,5 @@ public class EndpointResponse<TSuccess>
     /// <summary>
     /// Gets the success content if the request was successful; otherwise, null.
     /// </summary>
-    public TSuccess? SuccessContent => IsSuccess ? CastContent<TSuccess>() : null;
-}
+    public TSuccess? SuccessContent => IsSuccess ? CastContent<TSuccess>() : default;
+}
