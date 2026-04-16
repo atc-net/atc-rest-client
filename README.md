@@ -493,6 +493,21 @@ var result = await responseBuilder.BuildResponseAsync(
     cancellationToken);
 ```
 
+#### Error Response Deserialization Resilience
+
+When an error response (4xx/5xx) cannot be deserialized to the registered type (e.g., a server returns plain text instead of `ProblemDetails` JSON), the builder falls back to the raw string content instead of throwing. This allows generated result classes to handle the conversion gracefully:
+
+```csharp
+responseBuilder.AddErrorResponse<ProblemDetails>(HttpStatusCode.NotFound);
+
+// If the server returns plain text "Not Found" instead of JSON ProblemDetails,
+// ContentObject will be the raw string "Not Found" (not a ProblemDetails instance).
+// Generated result classes handle this via ProblemDetailsFactory.
+var result = await responseBuilder.BuildResponseAsync(x => x, cancellationToken);
+```
+
+> **Note:** For success responses (2xx), deserialization failures still throw `RestClientDeserializationException` since the response body is the primary payload.
+
 ## 💎 Best Practices
 
 ### Choosing Between Overloads
