@@ -314,7 +314,7 @@ public sealed class MessageResponseBuilderTests
     }
 
     [Theory, AutoNSubstituteData]
-    public async Task Should_Include_StatusCode_In_DeserializationException(
+    public async Task Should_Fallback_To_RawString_When_ErrorResponse_Deserialization_Fails(
         CancellationToken cancellationToken)
     {
         // Arrange
@@ -327,16 +327,15 @@ public sealed class MessageResponseBuilderTests
 
         var sut = CreateSut(response);
 
-        // Act
-        var act = () => sut.AddErrorResponse<BadResponse>(response.StatusCode)
+        // Act - error responses should not throw on deserialization failure
+        var result = await sut.AddErrorResponse<BadResponse>(response.StatusCode)
             .BuildResponseAsync(res => res, cancellationToken);
 
-        // Assert
-        var exception = await act.Should().ThrowAsync<RestClientDeserializationException>();
-        exception.Which.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        exception.Which.RawContent.Should().Be("{malformed}");
-        exception.Which.TargetType.Should().Be(typeof(BadResponse));
-        exception.Which.Message.Should().Contain(nameof(BadResponse));
+        // Assert - raw string content flows through as ContentObject
+        result.ContentObject.Should().Be("{malformed}");
+        result.Content.Should().Be("{malformed}");
+        result.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        result.IsSuccess.Should().BeFalse();
     }
 
     [Theory, AutoNSubstituteData]

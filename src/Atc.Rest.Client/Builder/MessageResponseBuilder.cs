@@ -67,23 +67,24 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 }
                 catch (Exception ex)
                 {
-                    throw new RestClientDeserializationException(
-                        $"Failed to deserialize response content to {serializerInfo.Value.TargetType.Name} for status code {(int)response.StatusCode} ({response.StatusCode})",
-                        ex,
-                        response.StatusCode,
-                        content,
-                        serializerInfo.Value.TargetType);
+                    if (IsSuccessStatus(response))
+                    {
+                        throw new RestClientDeserializationException(
+                            $"Failed to deserialize response content to {serializerInfo.Value.TargetType.Name} for status code {(int)response.StatusCode} ({response.StatusCode})",
+                            ex,
+                            response.StatusCode,
+                            content,
+                            serializerInfo.Value.TargetType);
+                    }
                 }
             }
 
-            var endpointResponse = new EndpointResponse(
+            return factory(new EndpointResponse(
                 IsSuccessStatus(response),
                 response.StatusCode,
                 content,
                 contentResponse,
-                GetHeaders(response));
-
-            return factory(endpointResponse);
+                GetHeaders(response)));
         }
 
         var contentObject = await response
@@ -91,8 +92,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             .ReadAsByteArrayAsync()
             .ConfigureAwait(false);
 
-        return factory(
-            new EndpointResponse(
+        return factory(new EndpointResponse(
                 IsSuccessStatus(response),
                 response.StatusCode,
                 string.Empty,
