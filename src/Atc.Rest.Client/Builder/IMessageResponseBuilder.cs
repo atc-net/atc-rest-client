@@ -38,6 +38,38 @@ public interface IMessageResponseBuilder
         HttpStatusCode statusCode);
 
     /// <summary>
+    /// Registers a status code as a success response whose body is plain text.
+    /// The body is returned verbatim as a <see cref="string"/> without any JSON
+    /// or other deserialization.
+    /// </summary>
+    /// <remarks>
+    /// Use this for endpoints that declare a <c>text/plain</c> (or other <c>text/*</c>) response.
+    /// The body is read via <see cref="HttpContent.ReadAsStringAsync()"/>, which honors the
+    /// charset declared in the <c>Content-Type</c> header.
+    /// An empty or whitespace-only body yields a <see langword="null"/> <c>ContentObject</c>,
+    /// matching the behavior of <see cref="AddSuccessResponse{TResponseContent}(HttpStatusCode)"/>.
+    /// </remarks>
+    /// <param name="statusCode">The HTTP status code to treat as success.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddSuccessTextResponse(HttpStatusCode statusCode);
+
+    /// <summary>
+    /// Registers a status code as an error response whose body is plain text.
+    /// The body is returned verbatim as a <see cref="string"/> without any JSON
+    /// or other deserialization.
+    /// </summary>
+    /// <remarks>
+    /// Use this for endpoints that declare a <c>text/plain</c> (or other <c>text/*</c>) error response.
+    /// The body is read via <see cref="HttpContent.ReadAsStringAsync()"/>, which honors the
+    /// charset declared in the <c>Content-Type</c> header.
+    /// An empty or whitespace-only body yields a <see langword="null"/> <c>ContentObject</c>,
+    /// matching the behavior of <see cref="AddErrorResponse{TResponseContent}(HttpStatusCode)"/>.
+    /// </remarks>
+    /// <param name="statusCode">The HTTP status code to treat as error.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddErrorTextResponse(HttpStatusCode statusCode);
+
+    /// <summary>
     /// Builds the response using a custom factory function.
     /// </summary>
     /// <typeparam name="TResult">The type of result to create.</typeparam>

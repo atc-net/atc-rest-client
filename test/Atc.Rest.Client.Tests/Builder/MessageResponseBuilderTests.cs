@@ -745,4 +745,183 @@ public sealed class MessageResponseBuilderTests
         result.Content.Should().BeNull();
         result.ErrorContent.Should().BeNull();
     }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_RawTextBody_ReturnsContentVerbatim(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - raw text body (NOT a JSON-quoted string)
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("file contents", System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessTextResponse(response.StatusCode)
+            .BuildResponseAsync<string>(cancellationToken);
+
+        // Assert - body returned verbatim, no JSON-quote processing, no exception
+        result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.Content.Should().Be("file contents");
+        result.SuccessContent.Should().Be("file contents");
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_RawTextBody_ContentObjectIsStringType(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("plain body", System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessTextResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - proves the bypass: ContentObject is the string itself, not a deserialized object
+        result.ContentObject.Should().BeOfType<string>();
+        result.ContentObject.Should().Be("plain body");
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_EmptyBody_ReturnsNullContentObject(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - empty text body (mirror AddTypedResponse<T> null-for-whitespace semantics)
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessTextResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.ContentObject.Should().BeNull();
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_DoesNotInvokeContractSerializer(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - body that would throw if pushed through JSON deserialization
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("not { valid json", System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act - must not throw RestClientDeserializationException
+        var result = await sut.AddSuccessTextResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert - content flowed through untouched, serializer was never called
+        result.Content.Should().Be("not { valid json");
+        result.ContentObject.Should().Be("not { valid json");
+        serializer.DidNotReceiveWithAnyArgs().Deserialize<string>((string)null!);
+        serializer.DidNotReceiveWithAnyArgs().Deserialize<string>((byte[])null!);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddErrorTextResponse_NonSuccessStatus_ReturnsErrorContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("validation failed", System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddErrorTextResponse(response.StatusCode)
+            .BuildResponseAsync<string, string>(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        result.ErrorContent.Should().Be("validation failed");
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_AndAddErrorTextResponse_CoexistOnSameBuilder_Success(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("ok body", System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act - register both on one builder; exercise the success path
+        var result = await sut
+            .AddSuccessTextResponse(HttpStatusCode.OK)
+            .AddErrorTextResponse(HttpStatusCode.BadRequest)
+            .BuildResponseAsync<string, string>(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.SuccessContent.Should().Be("ok body");
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_AndAddErrorTextResponse_CoexistOnSameBuilder_Error(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("bad body", System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act - register both on one builder; exercise the error path
+        var result = await sut
+            .AddSuccessTextResponse(HttpStatusCode.OK)
+            .AddErrorTextResponse(HttpStatusCode.BadRequest)
+            .BuildResponseAsync<string, string>(cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorContent.Should().Be("bad body");
+    }
+
+    [Theory, AutoNSubstituteData]
+    public void AddSuccessTextResponse_FluentChaining_ReturnsBuilder(
+        HttpResponseMessage response)
+    {
+        var sut = CreateSut(response);
+
+        var chained = sut.AddSuccessTextResponse(HttpStatusCode.OK);
+
+        chained.Should().BeSameAs(sut);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public void AddErrorTextResponse_FluentChaining_ReturnsBuilder(
+        HttpResponseMessage response)
+    {
+        var sut = CreateSut(response);
+
+        var chained = sut.AddErrorTextResponse(HttpStatusCode.BadRequest);
+
+        chained.Should().BeSameAs(sut);
+    }
 }
