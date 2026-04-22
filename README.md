@@ -30,6 +30,8 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [📋 Handling Responses](#-handling-responses)
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
+      - [Plain Text Responses](#plain-text-responses)
+      - [Error Response Deserialization Resilience](#error-response-deserialization-resilience)
   - [💎 Best Practices](#-best-practices)
     - [Choosing Between Overloads](#choosing-between-overloads)
     - [Multiple Client Registration](#multiple-client-registration)
@@ -62,6 +64,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
 - 📎 **Multipart Form Data**: File upload support with Stream-based API
 - 📤 **Binary Uploads**: Raw binary stream uploads (application/octet-stream)
 - 💾 **Binary Responses**: Handle file downloads with byte[] or Stream responses
+- 📝 **Plain Text Responses**: First-class `text/plain` handling that bypasses JSON deserialization
 - 🌊 **Streaming Support**: IAsyncEnumerable streaming for large datasets with proper lifecycle management
 - ⏱️ **HTTP Completion Options**: Control response buffering for streaming scenarios
 
@@ -493,6 +496,42 @@ var result = await responseBuilder.BuildResponseAsync(
     cancellationToken);
 ```
 
+#### Plain Text Responses
+
+For endpoints that return a `text/plain` (or other `text/*`) body with a `type: string` schema, use `AddSuccessTextResponse` / `AddErrorTextResponse`. These bypass the contract serializer entirely and return the body verbatim — no JSON parsing, no exceptions on non-JSON content:
+
+```csharp
+var requestBuilder = messageFactory.FromTemplate("/api/reports/{id}/text");
+requestBuilder.WithPathParameter("id", "123");
+
+using var request = requestBuilder.Build(HttpMethod.Get);
+using var response = await client.SendAsync(request, cancellationToken);
+
+var responseBuilder = messageFactory.FromResponse(response);
+responseBuilder.AddSuccessTextResponse(HttpStatusCode.OK);
+responseBuilder.AddErrorTextResponse(HttpStatusCode.BadRequest);
+
+var result = await responseBuilder.BuildResponseAsync<string, string>(cancellationToken);
+
+if (result.IsSuccess)
+{
+    // SuccessContent is the raw body, e.g. "file contents"
+    Console.WriteLine(result.SuccessContent);
+}
+else
+{
+    // ErrorContent is the raw error body, e.g. "validation failed"
+    Console.WriteLine($"❌ {result.StatusCode}: {result.ErrorContent}");
+}
+```
+
+> 💡 **When to use `AddSuccessTextResponse` vs `AddSuccessResponse<string>`:**
+>
+> - Use `AddSuccessTextResponse` when the server returns a raw text body (e.g. `file contents`). The default JSON serializer would reject this since it's not a valid JSON literal.
+> - Use `AddSuccessResponse<string>` only when the server returns a JSON-encoded string (e.g. `"file contents"` with quotes).
+>
+> An empty or whitespace-only body yields a `null` `ContentObject`, matching the behavior of `AddSuccessResponse<T>`. Character encoding follows the `Content-Type` charset.
+
 #### Error Response Deserialization Resilience
 
 When an error response (4xx/5xx) cannot be deserialized to the registered type (e.g., a server returns plain text instead of `ProblemDetails` JSON), the builder falls back to the raw string content instead of throwing. This allows generated result classes to handle the conversion gracefully:
@@ -635,6 +674,10 @@ public interface IMessageResponseBuilder
     IMessageResponseBuilder AddSuccessResponse<TResponseContent>(HttpStatusCode statusCode);
     IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode);
     IMessageResponseBuilder AddErrorResponse<TResponseContent>(HttpStatusCode statusCode);
+
+    // 📝 Plain text response support (text/*, bypasses serializer)
+    IMessageResponseBuilder AddSuccessTextResponse(HttpStatusCode statusCode);
+    IMessageResponseBuilder AddErrorTextResponse(HttpStatusCode statusCode);
 
     Task<TResult> BuildResponseAsync<TResult>(
         Func<EndpointResponse, TResult> factory,

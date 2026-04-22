@@ -41,6 +41,14 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode)
         => AddTypedResponse<TResponseContent>(statusCode, isSuccess: true);
 
+    public IMessageResponseBuilder AddSuccessTextResponse(
+        HttpStatusCode statusCode)
+        => AddTextResponse(statusCode, isSuccess: true);
+
+    public IMessageResponseBuilder AddErrorTextResponse(
+        HttpStatusCode statusCode)
+        => AddTextResponse(statusCode, isSuccess: false);
+
     public async Task<TResult> BuildResponseAsync<TResult>(
         Func<EndpointResponse, TResult> factory,
         CancellationToken cancellationToken)
@@ -328,6 +336,18 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 ? null
                 : serializer.Deserialize<T>(content),
             typeof(T));
+        responseCodes[statusCode] = isSuccess;
+
+        return this;
+    }
+
+    private IMessageResponseBuilder AddTextResponse(
+        HttpStatusCode statusCode,
+        bool isSuccess)
+    {
+        responseSerializers[statusCode] = (
+            content => string.IsNullOrWhiteSpace(content) ? null : content,
+            typeof(string));
         responseCodes[statusCode] = isSuccess;
 
         return this;
