@@ -72,6 +72,12 @@ public interface IMessageResponseBuilder
     /// <summary>
     /// Builds the response using a custom factory function.
     /// </summary>
+    /// <remarks>
+    /// Success bodies with a JSON or text media type (or no Content-Type) are read as a string; other success
+    /// media types are read as a <c>byte[]</c> into <see cref="EndpointResponse.ContentObject"/>
+    /// with an empty <see cref="EndpointResponse.Content"/>. Error bodies are always read as a string,
+    /// decoded by the Content-Type charset (UTF-8 when none is given), whatever the media type.
+    /// </remarks>
     /// <typeparam name="TResult">The type of result to create.</typeparam>
     /// <param name="factory">A factory function that creates the result from the endpoint response.</param>
     /// <param name="cancellationToken">The cancellation token.</param>

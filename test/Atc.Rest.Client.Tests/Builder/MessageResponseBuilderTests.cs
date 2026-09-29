@@ -924,4 +924,112 @@ public sealed class MessageResponseBuilderTests
 
         chained.Should().BeSameAs(sut);
     }
+
+    [Theory]
+    [InlineAutoNSubstituteData("application/xml")]
+    [InlineAutoNSubstituteData("application/octet-stream")]
+    [InlineAutoNSubstituteData("application/pdf")]
+    public async Task Should_Read_Error_Body_As_String_For_NonText_ContentTypes(
+        string contentType,
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        const string errorBody = "<error><message>xml down</message></error>";
+
+        using var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+        {
+            Content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(errorBody)),
+        };
+
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Content.Should().Be(errorBody);
+        result.ContentObject.Should().Be(errorBody);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Decode_Error_Body_Using_ContentType_Charset_For_NonText_ContentType(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        const string errorBody = "<error>Fejl på serveren: æøå</error>";
+
+        using var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new ByteArrayContent(System.Text.Encoding.Latin1.GetBytes(errorBody)),
+        };
+
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml")
+        {
+            CharSet = "iso-8859-1",
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Content.Should().Be(errorBody);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Read_Error_Body_As_String_For_Configured_Error_Status_With_NonText_ContentType(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - 200 is registered as an error, so the body must be read as text
+        const string errorBody = "not really a file";
+
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(errorBody)),
+        };
+
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddErrorResponse(HttpStatusCode.OK)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Content.Should().Be(errorBody);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task Should_Fall_Back_To_Raw_String_When_Typed_Error_Body_Has_NonText_ContentType(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        const string errorBody = "<error><message>xml down</message></error>";
+        serializer.Deserialize<BadResponse>(Arg.Any<string>()).Throws(new JsonException("Parse error"));
+
+        using var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+        {
+            Content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(errorBody)),
+        };
+
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddErrorResponse<BadResponse>(HttpStatusCode.ServiceUnavailable)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Content.Should().Be(errorBody);
+        result.ContentObject.Should().Be(errorBody);
+    }
 }

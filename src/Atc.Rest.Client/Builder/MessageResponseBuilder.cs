@@ -58,7 +58,9 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             return factory(EmptyResponse);
         }
 
-        if (UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
+        // Error bodies are diagnostic text, so they are always read as a string regardless of media type.
+        if (!IsSuccessStatus(response) ||
+            UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
         {
             var content = await response
                 .Content

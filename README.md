@@ -32,6 +32,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [Custom Response Processing](#custom-response-processing)
       - [Plain Text Responses](#plain-text-responses)
       - [Error Response Deserialization Resilience](#error-response-deserialization-resilience)
+      - [Error Bodies with Non-Text Media Types](#error-bodies-with-non-text-media-types)
   - [💎 Best Practices](#-best-practices)
     - [Choosing Between Overloads](#choosing-between-overloads)
     - [Multiple Client Registration](#multiple-client-registration)
@@ -546,6 +547,24 @@ var result = await responseBuilder.BuildResponseAsync(x => x, cancellationToken)
 ```
 
 > **Note:** For success responses (2xx), deserialization failures still throw `RestClientDeserializationException` since the response body is the primary payload.
+
+#### Error Bodies with Non-Text Media Types
+
+`BuildResponseAsync` reads a success body with a non-JSON, non-text media type (e.g. `application/octet-stream`, `image/png`) as a `byte[]` into `ContentObject`, leaving `Content` empty. Error bodies are treated differently: an error response is always read as a string, whatever its media type, because an error body is diagnostic text that callers log or show.
+
+```csharp
+responseBuilder.AddErrorResponse<ProblemDetails>(HttpStatusCode.ServiceUnavailable);
+
+// A gateway answers 503 with Content-Type: application/xml and body
+// "<error><message>xml down</message></error>".
+var result = await responseBuilder.BuildResponseAsync(x => x, cancellationToken);
+
+// result.Content       == "<error><message>xml down</message></error>"
+// result.ContentObject == the same string (deserialization to ProblemDetails failed, so it falls back)
+```
+
+- The body is decoded by the `Content-Type` charset (e.g. `application/xml; charset=iso-8859-1`), or UTF-8 when none is given.
+- "Error" follows the builder's configuration: a status registered with `AddErrorResponse` counts as an error even if it is 2xx, and one registered with `AddSuccessResponse` counts as a success even if it is 4xx/5xx.
 
 ## 💎 Best Practices
 
