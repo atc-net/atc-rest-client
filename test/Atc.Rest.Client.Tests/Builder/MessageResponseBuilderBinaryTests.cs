@@ -255,4 +255,197 @@ public sealed class MessageResponseBuilderBinaryTests
         await result.Content.CopyToAsync(ms2);
         ms2.ToArray().Should().BeEquivalentTo(expectedContent);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BuildBinaryResponse_ErrorWithRegisteredType_ReturnsTypedErrorContentObject(
+        bool useStream)
+    {
+        // Arrange
+        const string errorBody = """{"error":"not found"}""";
+        var expectedError = new BadResponse { Error = "not found" };
+        serializer.Deserialize<BadResponse>(errorBody).Returns(expectedError);
+
+        using var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent(errorBody, System.Text.Encoding.UTF8, "application/problem+json"),
+        };
+
+        var sut = CreateSut(response);
+        sut.AddErrorResponse<BadResponse>(HttpStatusCode.NotFound);
+
+        // Act
+        var result = await BuildAsync(sut, useStream);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorContent.Should().Be(errorBody);
+        result.ErrorContentObject.Should().BeSameAs(expectedError);
+        result.ContentType.Should().Be("application/problem+json");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BuildBinaryResponse_ErrorWithoutRegisteredType_ReturnsRawErrorAndMetadata(
+        bool useStream)
+    {
+        // Arrange
+        const string errorBody = "<html><body>Bad Gateway</body></html>";
+
+        using var response = new HttpResponseMessage(HttpStatusCode.BadGateway)
+        {
+            Content = new StringContent(errorBody, System.Text.Encoding.UTF8, "text/html"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await BuildAsync(sut, useStream);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorContent.Should().Be(errorBody);
+        result.ErrorContentObject.Should().BeNull();
+        result.ContentType.Should().Be("text/html");
+        result.ContentLength.Should().Be(System.Text.Encoding.UTF8.GetByteCount(errorBody));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BuildBinaryResponse_ErrorWhenDeserializationFails_ReturnsNullErrorContentObject(
+        bool useStream)
+    {
+        // Arrange
+        const string errorBody = "Not Found";
+        serializer.Deserialize<BadResponse>(Arg.Any<string>()).Throws(new JsonException("Parse error"));
+
+        using var response = new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent(errorBody, System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+        sut.AddErrorResponse<BadResponse>(HttpStatusCode.NotFound);
+
+        // Act
+        var result = await BuildAsync(sut, useStream);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorContent.Should().Be(errorBody);
+        result.ErrorContentObject.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BuildBinaryResponse_Error_ExposesResponseHeaders(
+        bool useStream)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent("slow down"),
+        };
+        response.Headers.Add("Retry-After", "30");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await BuildAsync(sut, useStream);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Headers.Should().ContainKey("Retry-After");
+        result.Headers["Retry-After"].Should().ContainSingle().Which.Should().Be("30");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BuildBinaryResponse_Success_ExposesResponseAndContentHeaders(
+        bool useStream)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent([1, 2, 3]),
+        };
+        response.Headers.Add("ETag", "\"abc\"");
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await BuildAsync(sut, useStream);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Headers["ETag"].Should().ContainSingle().Which.Should().Be("\"abc\"");
+        result.Headers["Content-Type"].Should().ContainSingle().Which.Should().Be("application/pdf");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BuildBinaryResponse_WithFileNameStar_PrefersDecodedFileNameStar(
+        bool useStream)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent([1, 2, 3]),
+        };
+        response.Content.Headers.Add(
+            "Content-Disposition",
+            "attachment; filename=\"Rapport-_.pdf\"; filename*=UTF-8''Rapport-%C3%85.pdf");
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await BuildAsync(sut, useStream);
+
+        // Assert
+        result.FileName.Should().Be("Rapport-Å.pdf");
+    }
+
+    private static async Task<BinaryResult> BuildAsync(
+        MessageResponseBuilder sut,
+        bool useStream)
+    {
+        if (!useStream)
+        {
+            var bytes = await sut.BuildBinaryResponseAsync(CancellationToken.None);
+            return new BinaryResult(
+                bytes.IsSuccess,
+                bytes.ContentType,
+                bytes.ContentLength,
+                bytes.FileName,
+                bytes.ErrorContent,
+                bytes.ErrorContentObject,
+                bytes.Headers);
+        }
+
+        using var stream = await sut.BuildStreamBinaryResponseAsync(CancellationToken.None);
+        return new BinaryResult(
+            stream.IsSuccess,
+            stream.ContentType,
+            stream.ContentLength,
+            stream.FileName,
+            stream.ErrorContent,
+            stream.ErrorContentObject,
+            stream.Headers);
+    }
+
+    private sealed record BinaryResult(
+        bool IsSuccess,
+        string? ContentType,
+        long? ContentLength,
+        string? FileName,
+        string? ErrorContent,
+        object? ErrorContentObject,
+        IReadOnlyDictionary<string, IEnumerable<string>> Headers);
 }
