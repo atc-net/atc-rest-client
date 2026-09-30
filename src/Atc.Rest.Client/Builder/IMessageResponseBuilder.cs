@@ -109,6 +109,13 @@ public interface IMessageResponseBuilder
     /// <summary>
     /// Builds a binary response from the HTTP response.
     /// </summary>
+    /// <remarks>
+    /// <see cref="BinaryEndpointResponse.IsSuccess"/> follows the HTTP status (2xx). On an error, the body is read
+    /// as text into <see cref="BinaryEndpointResponse.ErrorContent"/> and deserialized into
+    /// <see cref="BinaryEndpointResponse.ErrorContentObject"/> with the type registered for the status code
+    /// (e.g. <c>AddErrorResponse&lt;T&gt;</c>). <see cref="BinaryEndpointResponse.FileName"/> prefers the
+    /// RFC 5987 <c>filename*</c> parameter over <c>filename</c>.
+    /// </remarks>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="BinaryEndpointResponse"/> containing the binary content.</returns>
     Task<BinaryEndpointResponse> BuildBinaryResponseAsync(
@@ -119,6 +126,7 @@ public interface IMessageResponseBuilder
     /// </summary>
     /// <remarks>
     /// The caller is responsible for disposing the returned response.
+    /// Errors, typed error content and file names are handled as for <see cref="BuildBinaryResponseAsync"/>.
     /// </remarks>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A <see cref="StreamBinaryEndpointResponse"/> containing the content stream.</returns>

@@ -381,6 +381,31 @@ if (streamResponse.IsSuccess)
 }
 ```
 
+**File names:** `FileName` prefers the RFC 5987 `filename*` parameter over `filename`. For `Content-Disposition: attachment; filename="Rapport-_.pdf"; filename*=UTF-8''Rapport-%C3%85.pdf` (what ASP.NET Core sends for non-ASCII names), `FileName` is `Rapport-Å.pdf`.
+
+**Errors:** a download endpoint's errors carry the same information as any other endpoint's. Register the error types on the builder, and read the typed error, the raw text, the content type and the headers:
+
+```csharp
+var responseBuilder = messageFactory.FromResponse(response);
+responseBuilder.AddErrorResponse<ProblemDetails>(HttpStatusCode.NotFound);
+
+var binaryResponse = await responseBuilder.BuildBinaryResponseAsync(cancellationToken);
+if (!binaryResponse.IsSuccess)
+{
+    // Typed error body, or null when no type is registered for the status or it could not be deserialized.
+    var problem = binaryResponse.ErrorContentObject as ProblemDetails;
+
+    // Raw error body, always available (e.g. a proxy's HTML page).
+    var raw = binaryResponse.ErrorContent;
+
+    // Tell application/problem+json from text/html, and read headers such as Retry-After.
+    var contentType = binaryResponse.ContentType;
+    var retryAfter = binaryResponse.Headers.TryGetValue("Retry-After", out var values) ? values.First() : null;
+}
+```
+
+> **Note:** `IsSuccess` for binary responses follows the HTTP status (2xx). A 3xx response (an unfollowed redirect or a `304 Not Modified`) is therefore not a success, and its body is returned as `ErrorContent`. `BuildResponseAsync` likewise reports 3xx as not successful and reads the body as text. `HttpClient` follows redirects by default, so this only happens when redirects are disabled or for conditional requests.
+
 ### 🌊 Streaming Responses (IAsyncEnumerable)
 
 Stream large datasets efficiently using IAsyncEnumerable. There are two approaches:
@@ -795,7 +820,11 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
 
     public long? ContentLength { get; }
 
-    public string? ErrorContent { get; }  // Error message if request failed
+    public string? ErrorContent { get; }  // Raw error body if request failed
+
+    public object? ErrorContentObject { get; }  // Error body as the type registered with AddErrorResponse<T>
+
+    public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
 
     protected InvalidOperationException InvalidContentAccessException(
         HttpStatusCode expectedStatusCode,
@@ -820,7 +849,11 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse, IDisp
 
     public long? ContentLength { get; }
 
-    public string? ErrorContent { get; }  // Error message if request failed
+    public string? ErrorContent { get; }  // Raw error body if request failed
+
+    public object? ErrorContentObject { get; }  // Error body as the type registered with AddErrorResponse<T>
+
+    public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
 
     public void Dispose();
 

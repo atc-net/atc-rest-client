@@ -138,21 +138,23 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 errorContent: null);
         }
 
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var contentLength = response.Content.Headers.ContentLength;
+
         if (!response.IsSuccessStatusCode)
         {
-            var errorContent = await response
-                .Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
+            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response).ConfigureAwait(false);
 
             return new BinaryEndpointResponse(
                 isSuccess: false,
                 response.StatusCode,
                 content: null,
-                contentType: null,
+                contentType,
                 fileName: null,
-                contentLength: null,
-                errorContent);
+                contentLength,
+                errorContent,
+                errorContentObject,
+                GetHeaders(response));
         }
 
         var content = await response
@@ -160,18 +162,16 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             .ReadAsByteArrayAsync()
             .ConfigureAwait(false);
 
-        var contentType = response.Content.Headers.ContentType?.MediaType;
-        var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
-        var contentLength = response.Content.Headers.ContentLength;
-
         return new BinaryEndpointResponse(
             isSuccess: true,
             response.StatusCode,
             content,
             contentType,
-            fileName,
+            GetFileName(response.Content.Headers.ContentDisposition),
             contentLength,
-            errorContent: null);
+            errorContent: null,
+            errorContentObject: null,
+            GetHeaders(response));
     }
 
     public async Task<StreamBinaryEndpointResponse> BuildStreamBinaryResponseAsync(
@@ -189,21 +189,23 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 errorContent: null);
         }
 
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var contentLength = response.Content.Headers.ContentLength;
+
         if (!response.IsSuccessStatusCode)
         {
-            var errorContent = await response
-                .Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
+            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response).ConfigureAwait(false);
 
             return new StreamBinaryEndpointResponse(
                 isSuccess: false,
                 response.StatusCode,
                 contentStream: null,
-                contentType: null,
+                contentType,
                 fileName: null,
-                contentLength: null,
-                errorContent);
+                contentLength,
+                errorContent,
+                errorContentObject,
+                GetHeaders(response));
         }
 
         var contentStream = await response
@@ -211,18 +213,16 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             .ReadAsStreamAsync()
             .ConfigureAwait(false);
 
-        var contentType = response.Content.Headers.ContentType?.MediaType;
-        var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"');
-        var contentLength = response.Content.Headers.ContentLength;
-
         return new StreamBinaryEndpointResponse(
             isSuccess: true,
             response.StatusCode,
             contentStream,
             contentType,
-            fileName,
+            GetFileName(response.Content.Headers.ContentDisposition),
             contentLength,
-            errorContent: null);
+            errorContent: null,
+            errorContentObject: null,
+            GetHeaders(response));
     }
 
     public async IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(
@@ -290,6 +290,16 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
            headersContentType.MediaType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
            headersContentType.MediaType.Contains("text", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Prefers the RFC 5987 <c>filename*</c> parameter (already decoded, e.g. <c>UTF-8''Rapport-%C3%85.pdf</c>)
+    /// over the plain <c>filename</c>, which servers often send as a mangled ASCII fallback.
+    /// </summary>
+    private static string? GetFileName(
+        ContentDispositionHeaderValue? contentDisposition)
+        => string.IsNullOrEmpty(contentDisposition?.FileNameStar)
+            ? contentDisposition?.FileName?.Trim('"')
+            : contentDisposition!.FileNameStar;
+
     private static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(
         HttpResponseMessage responseMessage)
     {
@@ -306,6 +316,32 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         }
 
         return headers;
+    }
+
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "IContractSerializer is pluggable and may throw any exception; an undeserializable error body must not fail the call.")]
+    private async Task<(string ErrorContent, object? ErrorContentObject)> ReadErrorContentAsync(
+        HttpResponseMessage responseMessage)
+    {
+        var errorContent = await responseMessage
+            .Content
+            .ReadAsStringAsync()
+            .ConfigureAwait(false);
+
+        var serializerInfo = GetSerializer(responseMessage.StatusCode);
+        if (serializerInfo is null)
+        {
+            return (errorContent, null);
+        }
+
+        try
+        {
+            return (errorContent, serializerInfo.Value.Serializer.Invoke(errorContent));
+        }
+        catch (Exception)
+        {
+            // The raw text stays available in ErrorContent.
+            return (errorContent, null);
+        }
     }
 
     private bool IsSuccessStatus(HttpResponseMessage responseMessage)
