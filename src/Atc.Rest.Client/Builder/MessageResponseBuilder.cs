@@ -64,7 +64,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         {
             var content = await response
                 .Content
-                .ReadAsStringAsync()
+                .ReadAsStringAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             object? contentResponse = content;
@@ -99,7 +99,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         var contentObject = await response
             .Content
-            .ReadAsByteArrayAsync()
+            .ReadAsByteArrayAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return factory(new EndpointResponse(
@@ -159,7 +159,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         var content = await response
             .Content
-            .ReadAsByteArrayAsync()
+            .ReadAsByteArrayAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return new BinaryEndpointResponse(
@@ -210,7 +210,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         var contentStream = await response
             .Content
-            .ReadAsStreamAsync()
+            .ReadAsStreamAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return new StreamBinaryEndpointResponse(
@@ -233,7 +233,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             yield break;
         }
 
-        var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+        var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
         await foreach (var item in serializer.DeserializeAsyncEnumerable<T>(stream, cancellationToken).ConfigureAwait(false))
         {
@@ -258,7 +258,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         {
             var errorContent = await response
                 .Content
-                .ReadAsStringAsync()
+                .ReadAsStringAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return new StreamingEndpointResponse<T>(
@@ -271,7 +271,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         var stream = await response
             .Content
-            .ReadAsStreamAsync()
+            .ReadAsStreamAsync(cancellationToken)
             .ConfigureAwait(false);
 
         var content = serializer.DeserializeAsyncEnumerable<T>(stream, cancellationToken);
