@@ -160,6 +160,15 @@ services.AddAtcRestClientCore(o => o.TypeInfoResolverChain.Insert(0, MyJsonConte
 
 A type that isn't in the context throws `NotSupportedException`. Reflection is never used as a fallback.
 
+[`sample/Atc.Rest.Client.AotSample`](sample/Atc.Rest.Client.AotSample) is a Native AOT app that exercises these
+paths (JSON through a context, enum and date parameters, file and form bodies). CI publishes it with Native AOT,
+which fails on any trim or AOT warning, and runs it:
+
+```bash
+dotnet publish sample/Atc.Rest.Client.AotSample -c Release -r linux-x64 -o out
+./out/Atc.Rest.Client.AotSample
+```
+
 > **Notes:**
 >
 > - When reflection is enabled (the default for regular apps), the default options also write enums as strings
