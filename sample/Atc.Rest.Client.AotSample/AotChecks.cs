@@ -42,6 +42,7 @@ public sealed class AotChecks
             ("Stream body is sent as binary, not serialized", () => Run(CheckStreamBody)),
             ("Repeated multipart form fields are all sent", CheckRepeatedFormFieldsAsync),
             ("URL-encoded form body", CheckUrlEncodedFormAsync),
+            ("Empty URL-encoded form is still sent as a form", CheckEmptyUrlEncodedFormAsync),
         };
 
         var failures = 0;
@@ -279,5 +280,18 @@ public sealed class AotChecks
         var body = await request.Content!.ReadAsStringAsync().ConfigureAwait(false);
 
         Expect(body, "grant_type=client_credentials&scope=orders.read&scope=orders.write");
+    }
+
+    private async Task CheckEmptyUrlEncodedFormAsync()
+    {
+        using var request = messageFactory
+            .FromTemplate("/search")
+            .WithUrlEncodedForm([])
+            .Build(HttpMethod.Post);
+
+        var body = await request.Content!.ReadAsStringAsync().ConfigureAwait(false);
+
+        Expect(request.Content.Headers.ContentType!.MediaType, "application/x-www-form-urlencoded");
+        Expect(body, string.Empty);
     }
 }

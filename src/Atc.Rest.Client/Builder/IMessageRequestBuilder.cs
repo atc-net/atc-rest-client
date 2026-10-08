@@ -188,4 +188,18 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithUrlEncodedFormField(
         string name,
         string value);
+
+    /// <summary>
+    /// Sends an <c>application/x-www-form-urlencoded</c> request body with the given fields.
+    /// </summary>
+    /// <remarks>
+    /// The form is sent even when <paramref name="fields"/> is empty: an empty body with the form media type.
+    /// The fields are added after any field added before, and <see cref="WithUrlEncodedFormField"/> can add more.
+    /// URL-encoded fields cannot be combined with another request body; <see cref="Build"/> then throws an
+    /// <see cref="InvalidOperationException"/>.
+    /// </remarks>
+    /// <param name="fields">The form fields, in order. A repeated name sends one field per value.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithUrlEncodedForm(
+        IEnumerable<KeyValuePair<string, string>> fields);
 }

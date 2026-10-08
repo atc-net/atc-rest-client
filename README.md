@@ -361,6 +361,19 @@ using var request = requestBuilder.Build(HttpMethod.Post);
 // Body: grant_type=client_credentials&scope=orders.read&scope=orders.write
 ```
 
+To add a prepared list in one call, use `WithUrlEncodedForm`. It always sends a form, so a form whose optional
+fields are all unset is still sent: an empty body with `Content-Type: application/x-www-form-urlencoded`:
+
+```csharp
+var fields = new List<KeyValuePair<string, string>>();
+if (query is not null)
+{
+    fields.Add(new("query", query));
+}
+
+requestBuilder.WithUrlEncodedForm(fields); // sent even when fields is empty
+```
+
 URL-encoded fields cannot be combined with another body (JSON, binary or multipart); `Build` then throws an
 `InvalidOperationException`.
 
@@ -794,6 +807,7 @@ public interface IMessageRequestBuilder
 
     // URL-encoded form support
     IMessageRequestBuilder WithUrlEncodedFormField(string name, string value);
+    IMessageRequestBuilder WithUrlEncodedForm(IEnumerable<KeyValuePair<string, string>> fields);
 }
 ```
 

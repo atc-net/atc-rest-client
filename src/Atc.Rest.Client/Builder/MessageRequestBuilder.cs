@@ -14,6 +14,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private string contentMediaType = "application/json";
     private List<IFileContent>? contentFormFiles;
     private (Stream Stream, string ContentType)? binaryContent;
+    private bool hasUrlEncodedForm;
 
     public MessageRequestBuilder(
         string pathTemplate,
@@ -54,7 +55,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
     private HttpContent? BuildContent(HttpRequestMessage message)
     {
-        if (urlEncodedFormFields.Count > 0)
+        if (hasUrlEncodedForm)
         {
             if (content is not null ||
                 binaryContent.HasValue ||
@@ -453,6 +454,24 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         }
 
         urlEncodedFormFields.Add(new KeyValuePair<string?, string?>(name, value));
+        hasUrlEncodedForm = true;
+        return this;
+    }
+
+    public IMessageRequestBuilder WithUrlEncodedForm(
+        IEnumerable<KeyValuePair<string, string>> fields)
+    {
+        if (fields is null)
+        {
+            throw new ArgumentNullException(nameof(fields));
+        }
+
+        foreach (var field in fields)
+        {
+            WithUrlEncodedFormField(field.Key, field.Value);
+        }
+
+        hasUrlEncodedForm = true;
         return this;
     }
 
