@@ -39,6 +39,7 @@ public sealed class AotChecks
             ("Query DateOnly and decimal are culture-independent", () => Run(CheckQueryInvariantValues)),
             ("bool path, query and header values are lowercase", () => Run(CheckBoolValues)),
             ("IFileContent body is sent as multipart", () => Run(CheckFileContentBody)),
+            ("Stream body is sent as binary, not serialized", () => Run(CheckStreamBody)),
             ("Repeated multipart form fields are all sent", CheckRepeatedFormFieldsAsync),
             ("URL-encoded form body", CheckUrlEncodedFormAsync),
         };
@@ -228,6 +229,18 @@ public sealed class AotChecks
 
         Expect(request.RequestUri!.OriginalString, "/flags/true?list=true&list=false");
         Expect(string.Join(",", request.Headers.GetValues("x-flag")), "false");
+    }
+
+    private void CheckStreamBody()
+    {
+        using var stream = new MemoryStream([1, 2, 3]);
+        using var request = messageFactory
+            .FromTemplate("/files")
+            .WithBody(stream, "image/png")
+            .Build(HttpMethod.Put);
+
+        Expect(request.Content is StreamContent, expected: true);
+        Expect(request.Content!.Headers.ContentType!.MediaType, "image/png");
     }
 
     private void CheckFileContentBody()
