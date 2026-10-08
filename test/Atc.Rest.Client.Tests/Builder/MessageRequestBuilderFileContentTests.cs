@@ -308,4 +308,38 @@ public sealed class MessageRequestBuilderFileContentTests
         var bytes = await multipart.First().ReadAsByteArrayAsync();
         bytes.Should().BeEquivalentTo(data);
     }
+
+    [Fact]
+    public void EmptyEnumerableBody_FallsBackToJson()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var emptyList = new List<FormFileLike>();
+
+        // Act
+        sut.WithBody(emptyList);
+        sut.Build(HttpMethod.Post);
+
+        // Assert
+        serializer.Received(1).Serialize(emptyList);
+    }
+
+    [Fact]
+    public async Task DuckTyping_OptionalParametersShape_PassesDefaultValues()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var file = new OptionalParametersFileLike("data.bin", [7, 8, 9]);
+
+        // Act
+        sut.WithBody(file);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        var multipart = message.Content.Should().BeOfType<MultipartFormDataContent>().Subject;
+        var bytes = await multipart.Single().ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        bytes.Should().Equal(7, 8, 9);
+        file.CapturedBufferSize.Should().Be(4096);
+        file.CapturedMode.Should().Be("read");
+    }
 }

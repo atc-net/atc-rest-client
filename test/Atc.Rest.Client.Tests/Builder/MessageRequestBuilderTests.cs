@@ -526,4 +526,32 @@ public sealed class MessageRequestBuilderTests
             .Should()
             .Be("/api/items/-1");
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithQueryParameter_Enumerable_Throws_If_Name_Is_Null_Or_WhiteSpace(
+        string? name)
+    {
+        var sut = CreateSut();
+
+        sut.Invoking(x => x.WithQueryParameter(name!, new[] { 1, 2 }))
+            .Should()
+            .Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void WithQueryParameter_Object_Throws_If_Name_Is_Null_Or_WhiteSpace(
+        string? name)
+    {
+        var sut = CreateSut();
+
+        sut.Invoking(x => x.WithQueryParameter(name!, (object)42))
+            .Should()
+            .Throw<ArgumentException>();
+    }
 }
