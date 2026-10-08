@@ -118,7 +118,9 @@ services.AddAtcRestClient(
 
 #### Approach 3: Custom Options Type
 
-Use this approach when you need to register the options as a singleton for later retrieval:
+Use this approach when your client has its own options type that derives from `AtcRestClientOptions` (for example
+with extra settings such as an API key). `BaseAddress` and `Timeout` configure the named HttpClient. The options
+instance itself is not registered in the service collection; register it yourself if other services need it:
 
 ```csharp
 // Define a custom options class
@@ -746,7 +748,8 @@ IServiceCollection ConfigureAtcRestClientJsonOptions(
 
 #### `AddAtcRestClient` Extension Methods (Internal)
 
-These methods are used by source-generated code and are hidden from IntelliSense:
+These methods are mainly used by source-generated code and are hidden from IntelliSense, but they can also be called
+directly (see Approach 2 and Approach 3 under Service Registration):
 
 ```csharp
 // With HttpClient configuration
