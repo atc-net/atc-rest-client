@@ -139,4 +139,17 @@ public sealed class JsonSerializerOptionsExtensionsTests
         source.Converters.Should().HaveCount(1);
         source.Converters[0].Should().BeSameAs(converter);
     }
+
+    [Fact]
+    public void WithoutConverter_CopiesTypeInfoResolver()
+    {
+        var source = new JsonSerializerOptions
+        {
+            TypeInfoResolver = TestJsonContext.Default,
+        };
+
+        var result = source.WithoutConverter();
+
+        result.TypeInfoResolver.Should().BeSameAs(TestJsonContext.Default);
+    }
 }

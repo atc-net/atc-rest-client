@@ -34,6 +34,7 @@ public static class JsonSerializerOptionsExtensions
             PropertyNamingPolicy = source.PropertyNamingPolicy,
             ReadCommentHandling = source.ReadCommentHandling,
             WriteIndented = source.WriteIndented,
+            TypeInfoResolver = source.TypeInfoResolver,
         };
 
         foreach (var converter in source.Converters.Except(converters))
