@@ -1032,4 +1032,44 @@ public sealed class MessageResponseBuilderTests
         result.Content.Should().Be(errorBody);
         result.ContentObject.Should().Be(errorBody);
     }
+
+    [Fact]
+    public async Task BuildResponseAsync_WithCanceledToken_ThrowsOperationCanceledException()
+    {
+        // Arrange
+        using var response = CreateStreamResponse("application/json");
+        var sut = CreateSut(response);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        // Act
+        var act = () => sut.AddSuccessResponse<SuccessResponse>(HttpStatusCode.OK)
+            .BuildResponseAsync(res => res, cts.Token);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task BuildBinaryResponseAsync_WithCanceledToken_ThrowsOperationCanceledException()
+    {
+        // Arrange
+        using var response = CreateStreamResponse("application/octet-stream");
+        var sut = CreateSut(response);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        // Act
+        var act = () => sut.BuildBinaryResponseAsync(cts.Token);
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    private static HttpResponseMessage CreateStreamResponse(string mediaType)
+    {
+        var content = new StreamContent(new MemoryStream("""{"value":1}"""u8.ToArray()));
+        content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+    }
 }
