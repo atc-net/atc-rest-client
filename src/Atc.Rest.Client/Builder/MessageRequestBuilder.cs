@@ -174,6 +174,10 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             case List<IFileContent> fileContents:
                 contentFormFiles = new List<IFileContent>(fileContents);
                 break;
+            case Stream stream:
+                // A stream can't be serialized; send it as-is, like WithBinaryBody.
+                WithBinaryBody(stream);
+                break;
             default:
                 // Duck-typing of file-like bodies (IFormFile, IBrowserFile) looks up members by reflection.
                 // It follows the reflection-based serialization switch, so trimmed and Native AOT apps,
@@ -205,6 +209,11 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
         // Fail at the call, not at Build, for a malformed media type.
         _ = MediaTypeHeaderValue.Parse(contentType);
+
+        if (body is Stream stream and not IFileContent)
+        {
+            return WithBinaryBody(stream, contentType);
+        }
 
         WithBody(body);
         contentMediaType = contentType;

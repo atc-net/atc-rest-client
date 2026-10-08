@@ -81,6 +81,8 @@ public interface IMessageRequestBuilder
     /// </summary>
     /// <remarks>
     /// The builder should use a <see cref="IContractSerializer"/> to serialize <paramref name="body"/>.
+    /// A file body (<see cref="IFileContent"/>) is sent as multipart form data, and a <see cref="Stream"/> body is
+    /// sent as-is with <c>application/octet-stream</c>, as <see cref="WithBinaryBody"/> sends it.
     /// </remarks>
     /// <typeparam name="TBody">The type of object to add as the body of the request.</typeparam>
     /// <param name="body">The body to add to the request.</param>
@@ -94,6 +96,7 @@ public interface IMessageRequestBuilder
     /// Use it for a JSON media type such as <c>application/merge-patch+json</c> or <c>application/vnd.x+json</c>.
     /// The body is serialized with the builder's <see cref="IContractSerializer"/>. A file body
     /// (<see cref="IFileContent"/>) is still sent as multipart form data, and <paramref name="contentType"/> is ignored.
+    /// A <see cref="Stream"/> body is sent as-is with <paramref name="contentType"/>, as <see cref="WithBinaryBody"/> sends it.
     /// </remarks>
     /// <typeparam name="TBody">The type of object to add as the body of the request.</typeparam>
     /// <param name="body">The body to add to the request.</param>

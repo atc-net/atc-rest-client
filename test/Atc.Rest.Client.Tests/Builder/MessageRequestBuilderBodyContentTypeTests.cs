@@ -75,6 +75,39 @@ public sealed class MessageRequestBuilderBodyContentTypeTests
     }
 
     [Fact]
+    public async Task WithBody_Stream_SendsStreamAsOctetStream_WithoutSerializing()
+    {
+        // Arrange
+        using var stream = new MemoryStream([1, 2, 3]);
+        var sut = CreateSut();
+
+        // Act
+        sut.WithBody(stream);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<StreamContent>();
+        message.Content!.Headers.ContentType!.MediaType.Should().Be("application/octet-stream");
+        var bytes = await message.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
+        bytes.Should().Equal(1, 2, 3);
+        serializer.DidNotReceiveWithAnyArgs().Serialize(default!);
+    }
+
+    [Fact]
+    public void WithBody_Stream_ContentType_SendsStreamWithThatMediaType()
+    {
+        using var stream = new MemoryStream([1, 2, 3]);
+        var sut = CreateSut();
+
+        sut.WithBody<Stream>(stream, "image/png");
+        var message = sut.Build(HttpMethod.Put);
+
+        message.Content.Should().BeOfType<StreamContent>();
+        message.Content!.Headers.ContentType!.MediaType.Should().Be("image/png");
+        serializer.DidNotReceiveWithAnyArgs().Serialize(default!);
+    }
+
+    [Fact]
     public void WithBody_ContentType_ReturnsSameInstance()
     {
         serializer.Serialize(Arg.Any<object>()).Returns("{}");

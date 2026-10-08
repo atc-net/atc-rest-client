@@ -437,6 +437,9 @@ using var request = requestBuilder.Build(HttpMethod.Post);
 >
 > - Use `WithBinaryBody` when the API expects raw binary data with `application/octet-stream` or similar content type
 > - Use `WithFile` when the API expects `multipart/form-data` format (typical file upload forms)
+>
+> A `Stream` passed to `WithBody` is sent the same way as `WithBinaryBody` (with the content type given to
+> `WithBody(stream, contentType)`, else `application/octet-stream`), not serialized.
 
 ### 💾 File Download (Binary Response)
 
