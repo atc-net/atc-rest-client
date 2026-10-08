@@ -368,14 +368,38 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAtcRestClientCore_WithConfigure_AppliesConfigurationToDefaultOptions()
+    public void AddAtcRestClientCore_NullLiteral_UsesDefaultSerializer()
+    {
+        var services = new ServiceCollection();
+
+        services.AddAtcRestClientCore(null);
+        var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IContractSerializer>().Should().BeOfType<DefaultJsonContractSerializer>();
+    }
+
+    [Fact]
+    public void AddAtcRestClientCore_DefaultSerializer_UsesDefaultOptions()
+    {
+        var services = new ServiceCollection();
+
+        services.AddAtcRestClientCore();
+        var serializer = services.BuildServiceProvider().GetRequiredService<IContractSerializer>();
+
+        serializer.Serialize(new TestModel("Test", 42))
+            .Should()
+            .Be(new DefaultJsonContractSerializer().Serialize(new TestModel("Test", 42)));
+    }
+
+    [Fact]
+    public void ConfigureAtcRestClientJsonOptions_AppliesConfigurationToDefaultOptions()
     {
         // Arrange
         var services = new ServiceCollection();
         JsonSerializerOptions? configured = null;
 
         // Act
-        services.AddAtcRestClientCore(o =>
+        services.ConfigureAtcRestClientJsonOptions(o =>
         {
             o.TypeInfoResolverChain.Insert(0, TestJsonContext.Default);
             configured = o;
@@ -393,11 +417,94 @@ public sealed class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAtcRestClientCore_WithNullConfigure_Throws()
+    public void ConfigureAtcRestClientJsonOptions_CalledByEachLibrary_AppliesEveryStepInOrder()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var firstConverter = new CustomTestConverter();
+        var secondConverter = new AnotherTestConverter();
+        JsonSerializerOptions? configured = null;
+
+        // Act
+        services.ConfigureAtcRestClientJsonOptions(o => o.Converters.Insert(0, firstConverter));
+        services.AddAtcRestClientCore();
+        services.ConfigureAtcRestClientJsonOptions(o =>
+        {
+            o.TypeInfoResolverChain.Insert(0, TestJsonContext.Default);
+            o.Converters.Insert(0, secondConverter);
+            configured = o;
+        });
+        var serializer = services.BuildServiceProvider().GetRequiredService<IContractSerializer>();
+
+        // Assert
+        serializer.Should().BeOfType<DefaultJsonContractSerializer>();
+        configured.Should().NotBeNull();
+        configured!.IsReadOnly.Should().BeTrue();
+        configured.Converters.Take(2).Should().Equal(secondConverter, firstConverter);
+        configured.TypeInfoResolverChain[0].Should().BeSameAs(TestJsonContext.Default);
+    }
+
+    [Fact]
+    public void ConfigureAtcRestClientJsonOptions_WithContext_StillSerializesTypesOutsideIt_WhenReflectionIsEnabled()
     {
         var services = new ServiceCollection();
 
-        var act = () => services.AddAtcRestClientCore((Action<JsonSerializerOptions>)null!);
+        services.ConfigureAtcRestClientJsonOptions(o => o.TypeInfoResolverChain.Insert(0, TestJsonContext.Default));
+        var serializer = services.BuildServiceProvider().GetRequiredService<IContractSerializer>();
+
+        serializer.Serialize(new NestedModel(new TestModel("Parent", 1), Child: null))
+            .Should()
+            .Contain("\"parent\":");
+    }
+
+    [Fact]
+    public void ConfigureAtcRestClientJsonOptions_IsIgnored_WhenASerializerInstanceIsRegisteredFirst()
+    {
+        var services = new ServiceCollection();
+        var customSerializer = Substitute.For<IContractSerializer>();
+        var configured = false;
+
+        services.AddAtcRestClientCore(customSerializer);
+        services.ConfigureAtcRestClientJsonOptions(_ => configured = true);
+        var serializer = services.BuildServiceProvider().GetRequiredService<IContractSerializer>();
+
+        serializer.Should().BeSameAs(customSerializer);
+        configured.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AddAtcRestClientCore_UsesJsonSerializerOptions_RegisteredInTheServiceCollection()
+    {
+        var services = new ServiceCollection();
+        var registered = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+        var configured = false;
+
+        services.AddSingleton(registered);
+        services.AddAtcRestClientCore();
+        services.ConfigureAtcRestClientJsonOptions(_ => configured = true);
+        var serializer = services.BuildServiceProvider().GetRequiredService<IContractSerializer>();
+
+        serializer.Serialize(new { FirstName = "Ada" }).Should().Contain("\"first_name\":");
+        registered.IsReadOnly.Should().BeTrue();
+        configured.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConfigureAtcRestClientJsonOptions_RegistersHttpMessageFactory()
+    {
+        var services = new ServiceCollection();
+
+        services.ConfigureAtcRestClientJsonOptions(_ => { });
+
+        services.BuildServiceProvider().GetService<IHttpMessageFactory>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ConfigureAtcRestClientJsonOptions_WithNullConfigure_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.ConfigureAtcRestClientJsonOptions(null!);
 
         act.Should().Throw<ArgumentNullException>();
     }
