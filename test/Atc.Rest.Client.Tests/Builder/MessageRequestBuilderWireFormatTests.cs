@@ -115,13 +115,13 @@ public sealed class MessageRequestBuilderWireFormatTests
     }
 
     [Fact]
-    public void WithQueryParameter_Bool_IsUnchanged()
+    public void WithQueryParameter_Bool_IsLowercase()
     {
         var sut = CreateSut();
 
         sut.WithQueryParameter("active", true);
 
-        BuildUri(sut).Should().Be("/api?active=True");
+        BuildUri(sut).Should().Be("/api?active=true");
     }
 
     [Fact]
@@ -165,6 +165,34 @@ public sealed class MessageRequestBuilderWireFormatTests
 
             BuildUri(sut).Should().Be("/api?amounts=1.5&amounts=2.25");
         });
+
+    [Fact]
+    public void Bool_IsLowercase_InPathQueryListAndHeader()
+    {
+        var sut = CreateSut("/flags/{flag}");
+
+        sut.WithPathParameter("flag", true);
+        sut.WithQueryParameter("q", false);
+        sut.WithQueryParameter("list", new[] { true, false });
+        sut.WithHeaderParameter("x-flag", true);
+        var message = sut.Build(HttpMethod.Get);
+
+        message.RequestUri!.OriginalString.Should().Be("/flags/true?q=false&list=true&list=false");
+        message.Headers.GetValues("x-flag").Should().Equal("true");
+    }
+
+    [Fact]
+    public void NullableBool_IsLowercase_AndNullIsOmitted()
+    {
+        bool? set = true;
+        bool? unset = null;
+        var sut = CreateSut();
+
+        sut.WithQueryParameter("set", set);
+        sut.WithQueryParameter("unset", unset);
+
+        BuildUri(sut).Should().Be("/api?set=true");
+    }
 
     private static string BuildUri(MessageRequestBuilder sut)
         => sut.Build(HttpMethod.Get).RequestUri!.OriginalString;

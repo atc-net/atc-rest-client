@@ -297,6 +297,7 @@ Path, header and query values (and each item of a list) are written in a culture
 
 | Value | Wire text |
 |---|---|
+| `bool` | `true` / `false` |
 | `DateTime`, `DateTimeOffset` | ISO 8601 (`"o"`), e.g. `1990-02-28T12:30:00.0000000+02:00` |
 | `DateOnly` | `yyyy-MM-dd` |
 | `TimeOnly` | `HH:mm:ss.FFFFFFF` |
