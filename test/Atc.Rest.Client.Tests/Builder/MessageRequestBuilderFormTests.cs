@@ -123,6 +123,85 @@ public sealed class MessageRequestBuilderFormTests
     }
 
     [Fact]
+    public async Task WithUrlEncodedForm_Empty_SendsEmptyFormBody()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.WithUrlEncodedForm([]);
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        message.Content.Should().BeOfType<FormUrlEncodedContent>();
+        message.Content!.Headers.ContentType!.MediaType.Should().Be("application/x-www-form-urlencoded");
+        var body = await message.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task WithUrlEncodedForm_AddsFieldsInOrder_AndCombinesWithSingleFields()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.WithUrlEncodedFormField("a", "1");
+        sut.WithUrlEncodedForm(
+        [
+            new KeyValuePair<string, string>("b", "x y"),
+            new KeyValuePair<string, string>("b", "z"),
+        ]);
+        sut.WithUrlEncodedFormField("c", "3");
+        var message = sut.Build(HttpMethod.Post);
+
+        // Assert
+        var body = await message.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        body.Should().Be("a=1&b=x+y&b=z&c=3");
+    }
+
+    [Fact]
+    public void WithUrlEncodedForm_Throws_If_Fields_Is_Null()
+    {
+        var sut = CreateSut();
+
+        sut.Invoking(x => x.WithUrlEncodedForm(null!))
+            .Should()
+            .Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void WithUrlEncodedForm_Throws_If_A_Field_Name_Is_WhiteSpace()
+    {
+        var sut = CreateSut();
+
+        sut.Invoking(x => x.WithUrlEncodedForm([new KeyValuePair<string, string>(" ", "1")]))
+            .Should()
+            .Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void WithUrlEncodedForm_ReturnsSameInstance()
+    {
+        var sut = CreateSut();
+
+        sut.WithUrlEncodedForm([]).Should().BeSameAs(sut);
+    }
+
+    [Fact]
+    public void WithUrlEncodedForm_Empty_CombinedWithJsonBody_ThrowsOnBuild()
+    {
+        serializer.Serialize(Arg.Any<object>()).Returns("{}");
+        var sut = CreateSut();
+        sut.WithUrlEncodedForm([]);
+        sut.WithBody(new TestModel("Test", 42));
+
+        sut.Invoking(x => x.Build(HttpMethod.Post))
+            .Should()
+            .Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public void WithUrlEncodedFormField_CombinedWithBinaryBody_ThrowsOnBuild()
     {
         using var stream = new MemoryStream([1, 2, 3]);
