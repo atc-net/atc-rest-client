@@ -2,12 +2,6 @@ namespace Atc.Rest.Client.Builder;
 
 internal class MessageRequestBuilder : IMessageRequestBuilder
 {
-    /// <summary>
-    /// Cache for enum member attribute values to avoid repeated reflection.
-    /// Key: (EnumType, MemberName), Value: EnumMemberAttribute.Value or null if not found.
-    /// </summary>
-    private static readonly ConcurrentDictionary<(Type EnumType, string MemberName), string?> EnumMemberCache = new();
-
     private readonly string template;
     private readonly IContractSerializer serializer;
     private readonly Dictionary<string, string> pathMapper;
@@ -205,12 +199,15 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
         }
 
-        if (value is null || string.IsNullOrWhiteSpace(value.ToString()))
+        var wireValue = value is null
+            ? null
+            : WireValueFormatter.ToWireString(value);
+        if (string.IsNullOrWhiteSpace(wireValue))
         {
             throw new ArgumentException($"'{nameof(value)}' cannot be null or whitespace", nameof(value));
         }
 
-        pathMapper[name] = value.ToString()!;
+        pathMapper[name] = wireValue!;
 
         return this;
     }
@@ -229,7 +226,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             return this;
         }
 
-        headerMapper[name] = value.ToString()!;
+        headerMapper[name] = WireValueFormatter.ToWireString(value);
 
         return this;
     }
@@ -268,9 +265,10 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         var sb = new StringBuilder();
         foreach (var value in values.OfType<object>())
         {
+            var wireValue = Uri.EscapeDataString(WireValueFormatter.ToWireString(value));
             sb.Append(sb.Length == 0
-                ? Uri.EscapeDataString(value.ToString()!)
-                : $"&{name}={Uri.EscapeDataString(value.ToString()!)}");
+                ? wireValue
+                : $"&{name}={wireValue}");
         }
 
         if (sb.Length > 0)
@@ -298,49 +296,9 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             return this;
         }
 
-        if (value is Enum)
-        {
-            queryMapper[name] = GetEnumMemberValue(value) ?? value.ToString()!;
-        }
-        else if (value is DateTime dt)
-        {
-            queryMapper[name] = dt.ToString("o");
-        }
-        else if (value is DateTimeOffset dto)
-        {
-            queryMapper[name] = dto.ToString("o");
-        }
-        else
-        {
-            queryMapper[name] = value.ToString()!;
-        }
+        queryMapper[name] = WireValueFormatter.ToWireString(value);
 
         return this;
-    }
-
-    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "The trimmer keeps every field of an enum type that is kept, so the public fields of the value's enum type are available.")]
-    private static string? GetEnumMemberValue(object enumValue)
-        => GetEnumMemberValue(enumValue.GetType(), enumValue.ToString()!);
-
-    /// <summary>
-    /// Gets the EnumMemberAttribute value for an enum member, using a cache to avoid repeated reflection.
-    /// </summary>
-    private static string? GetEnumMemberValue(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumType,
-        string memberName)
-    {
-        var key = (enumType, memberName);
-        if (EnumMemberCache.TryGetValue(key, out var cached))
-        {
-            return cached;
-        }
-
-        var value = enumType
-            .GetField(memberName, BindingFlags.Public | BindingFlags.Static)
-            ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
-            ?.Value;
-
-        return EnumMemberCache.GetOrAdd(key, value);
     }
 
     private Uri BuildRequestUri()
