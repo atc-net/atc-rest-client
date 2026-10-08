@@ -88,6 +88,22 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithBody<TBody>(TBody body);
 
     /// <summary>
+    /// Adds the body of the request, sent with the given media type instead of <c>application/json</c>.
+    /// </summary>
+    /// <remarks>
+    /// Use it for a JSON media type such as <c>application/merge-patch+json</c> or <c>application/vnd.x+json</c>.
+    /// The body is serialized with the builder's <see cref="IContractSerializer"/>. A file body
+    /// (<see cref="IFileContent"/>) is still sent as multipart form data, and <paramref name="contentType"/> is ignored.
+    /// </remarks>
+    /// <typeparam name="TBody">The type of object to add as the body of the request.</typeparam>
+    /// <param name="body">The body to add to the request.</param>
+    /// <param name="contentType">The media type of the serialized body.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithBody<TBody>(
+        TBody body,
+        string contentType);
+
+    /// <summary>
     /// Adds a binary stream as the body of the request.
     /// </summary>
     /// <remarks>
@@ -152,6 +168,21 @@ public interface IMessageRequestBuilder
     /// <param name="value">The form field value.</param>
     /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
     IMessageRequestBuilder WithFormField(
+        string name,
+        string value);
+
+    /// <summary>
+    /// Adds a field to an <c>application/x-www-form-urlencoded</c> request body.
+    /// </summary>
+    /// <remarks>
+    /// A repeated name sends one field per value, in call order (how a list is encoded).
+    /// URL-encoded fields cannot be combined with another request body; <see cref="Build"/> then throws an
+    /// <see cref="InvalidOperationException"/>.
+    /// </remarks>
+    /// <param name="name">The form field name.</param>
+    /// <param name="value">The form field value.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithUrlEncodedFormField(
         string name,
         string value);
 }
