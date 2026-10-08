@@ -34,7 +34,9 @@ public class DefaultJsonContractSerializer : IContractSerializer
     /// </summary>
     /// <remarks>
     /// When reflection-based serialization is enabled (<see cref="JsonSerializer.IsReflectionEnabledByDefault"/>),
-    /// the options resolve metadata through <see cref="DefaultJsonTypeInfoResolver"/> and write enums as strings.
+    /// the options resolve metadata through <see cref="DefaultJsonTypeInfoResolver"/> and write enums as strings,
+    /// except an enum that declares its own <see cref="JsonConverterAttribute"/> (for example
+    /// <c>JsonNumberEnumConverter&lt;T&gt;</c>), which keeps that converter.
     /// Otherwise (trimmed and Native AOT apps) they start with an empty resolver chain; insert a
     /// <see cref="JsonSerializerContext"/> into <see cref="JsonSerializerOptions.TypeInfoResolverChain"/>
     /// for the types to serialize.
@@ -66,7 +68,7 @@ public class DefaultJsonContractSerializer : IContractSerializer
     private static void AddReflectionDefaults(JsonSerializerOptions options)
     {
         options.TypeInfoResolver = new DefaultJsonTypeInfoResolver();
-        options.Converters.Add(new JsonStringEnumConverter());
+        options.Converters.Add(new EnumConverterFallbackFactory(new JsonStringEnumConverter()));
     }
 
     private static JsonSerializerOptions CreateReadOnly(

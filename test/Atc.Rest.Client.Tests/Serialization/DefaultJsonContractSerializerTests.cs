@@ -542,4 +542,22 @@ public sealed class DefaultJsonContractSerializerTests
 
         result.Should().Be(new TestModel("Test", 42));
     }
+
+    [Fact]
+    public void Serialize_EnumWithOwnNumberConverter_IsWrittenAsNumber()
+    {
+        var json = sut.Serialize(new TaskItem(Priority.Medium, Priority.High, TestStatus.Active));
+
+        json.Should().Contain("\"priority\": 2");
+        json.Should().Contain("\"optionalPriority\": 3");
+        json.Should().Contain("\"status\": \"Active\"");
+    }
+
+    [Fact]
+    public void Deserialize_EnumWithOwnNumberConverter_ReadsNumber()
+    {
+        var result = sut.Deserialize<TaskItem>("""{"priority":2,"optionalPriority":null,"status":"Pending"}""");
+
+        result.Should().Be(new TaskItem(Priority.Medium, null, TestStatus.Pending));
+    }
 }
