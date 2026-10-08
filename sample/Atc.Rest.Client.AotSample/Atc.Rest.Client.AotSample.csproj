@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Native AOT check for Atc.Rest.Client: publish this app with Native AOT and run it.
+      dotnet publish sample/Atc.Rest.Client.AotSample -c Release -r <rid>
+    The publish fails on any trim or AOT warning (TreatWarningsAsErrors in Release), and the app exits
+    with a non-zero code when a check fails.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <PublishAot>true</PublishAot>
+    <!-- Report each trim/AOT warning at its call site instead of one IL2104 per assembly -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Atc.Rest.Client\Atc.Rest.Client.csproj" />
+  </ItemGroup>
+
+</Project>
