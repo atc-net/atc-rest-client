@@ -146,6 +146,7 @@ public interface IMessageRequestBuilder
 
     /// <summary>
     /// Adds a form field to the multipart form data content.
+    /// Each call adds a part, so a repeated name sends one part per value, in call order.
     /// </summary>
     /// <param name="name">The form field name.</param>
     /// <param name="value">The form field value.</param>

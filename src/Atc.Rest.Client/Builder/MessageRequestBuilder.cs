@@ -7,7 +7,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private readonly Dictionary<string, string> pathMapper;
     private readonly Dictionary<string, string> headerMapper;
     private readonly Dictionary<string, string> queryMapper;
-    private readonly Dictionary<string, string> formFields;
+    private readonly List<KeyValuePair<string, string>> formFields;
     private readonly List<(Stream Stream, string Name, string FileName, string? ContentType)> streamFiles;
     private string? content;
     private List<IFileContent>? contentFormFiles;
@@ -22,7 +22,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         pathMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         headerMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         queryMapper = new Dictionary<string, string>(StringComparer.Ordinal);
-        formFields = new Dictionary<string, string>(StringComparer.Ordinal);
+        formFields = [];
         streamFiles = [];
         WithHeaderParameter("accept", "application/json");
     }
@@ -391,7 +391,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             throw new ArgumentNullException(nameof(value));
         }
 
-        formFields[name] = value;
+        formFields.Add(new KeyValuePair<string, string>(name, value));
         return this;
     }
 
