@@ -18,6 +18,7 @@ internal static class WireValueFormatter
 
     /// <summary>
     /// Gets the wire text of a value:
+    /// bool as true/false;
     /// enums as their [EnumMember]/[JsonStringEnumMemberName] value, their number when the enum type declares
     /// a JsonNumberEnumConverter, else their name; DateTime and DateTimeOffset as ISO 8601 ("o");
     /// DateOnly as yyyy-MM-dd; TimeOnly as HH:mm:ss.FFFFFFF; other IFormattable values with the invariant culture;
@@ -29,6 +30,7 @@ internal static class WireValueFormatter
         => value switch
         {
             string text => text,
+            bool flag => flag ? "true" : "false",
             Enum enumValue => FormatEnum(enumValue),
             DateTime dateTime => dateTime.ToString("o", CultureInfo.InvariantCulture),
             DateTimeOffset dateTimeOffset => dateTimeOffset.ToString("o", CultureInfo.InvariantCulture),

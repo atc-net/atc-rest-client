@@ -37,6 +37,7 @@ public sealed class AotChecks
             ("Query enum uses [JsonStringEnumMemberName]", () => Run(CheckQueryJsonStringEnumMemberName)),
             ("Query array of a JsonNumberEnumConverter enum writes numbers", () => Run(CheckQueryNumberEnumArray)),
             ("Query DateOnly and decimal are culture-independent", () => Run(CheckQueryInvariantValues)),
+            ("bool path, query and header values are lowercase", () => Run(CheckBoolValues)),
             ("IFileContent body is sent as multipart", () => Run(CheckFileContentBody)),
             ("Repeated multipart form fields are all sent", CheckRepeatedFormFieldsAsync),
             ("URL-encoded form body", CheckUrlEncodedFormAsync),
@@ -214,6 +215,19 @@ public sealed class AotChecks
             .Build(HttpMethod.Get);
 
         Expect(request.RequestUri!.OriginalString, "/orders?day=1990-02-28&amount=1.5");
+    }
+
+    private void CheckBoolValues()
+    {
+        using var request = messageFactory
+            .FromTemplate("/flags/{flag}")
+            .WithPathParameter("flag", true)
+            .WithQueryParameter("list", new[] { true, false })
+            .WithHeaderParameter("x-flag", false)
+            .Build(HttpMethod.Get);
+
+        Expect(request.RequestUri!.OriginalString, "/flags/true?list=true&list=false");
+        Expect(string.Join(",", request.Headers.GetValues("x-flag")), "false");
     }
 
     private void CheckFileContentBody()

@@ -185,7 +185,7 @@ public sealed class MessageRequestBuilderAdditionalTests
     }
 
     [Fact]
-    public void WithQueryParameter_WithBooleanValue_ConvertsToString()
+    public void WithQueryParameter_WithBooleanValue_ConvertsToLowercaseText()
     {
         // Arrange
         var sut = CreateSut("/api");
@@ -195,7 +195,7 @@ public sealed class MessageRequestBuilderAdditionalTests
         var message = sut.Build(HttpMethod.Get);
 
         // Assert
-        message.RequestUri!.ToString().Should().Be("/api?active=True");
+        message.RequestUri!.ToString().Should().Be("/api?active=true");
     }
 
     [Fact]
