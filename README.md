@@ -22,6 +22,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [📤 POST Request with Body](#-post-request-with-body)
     - [🔗 Using Path and Query Parameters](#-using-path-and-query-parameters)
     - [📎 File Upload (Multipart Form Data)](#-file-upload-multipart-form-data)
+    - [📝 URL-Encoded Form Body](#-url-encoded-form-body)
     - [📁 File Upload with IFileContent](#-file-upload-with-ifilecontent)
     - [📤 Binary Upload (Raw Stream)](#-binary-upload-raw-stream)
     - [💾 File Download (Binary Response)](#-file-download-binary-response)
@@ -162,7 +163,8 @@ A type that isn't in the context throws `NotSupportedException`. Reflection is n
 > **Notes:**
 >
 > - When reflection is enabled (the default for regular apps), the default options also write enums as strings
->   through `JsonStringEnumConverter`. That converter isn't AOT-safe, so in trimmed apps enum handling comes from
+>   through `JsonStringEnumConverter`, unless the enum declares its own `[JsonConverter]` (for example
+>   `JsonNumberEnumConverter<T>`, which writes the number). That converter isn't AOT-safe, so in trimmed apps enum handling comes from
 >   your context, for example `UseStringEnumConverter = true` or a per-enum `JsonStringEnumConverter<TEnum>`.
 > - `DefaultJsonContractSerializer` makes the options it is given read-only when it is constructed.
 > - Automatic detection of file-like bodies (`IFormFile`, `IBrowserFile`) uses reflection and is turned off when
@@ -262,6 +264,13 @@ responseBuilder.AddErrorResponse<ValidationProblemDetails>(HttpStatusCode.BadReq
 var result = await responseBuilder.BuildResponseAsync<User>(cancellationToken);
 ```
 
+The body is sent as `application/json`. For another JSON media type, pass it as the second argument; the body is
+still serialized with the registered `IContractSerializer`:
+
+```csharp
+requestBuilder.WithBody(patch, "application/merge-patch+json");
+```
+
 ### 🔗 Using Path and Query Parameters
 
 ```csharp
@@ -274,6 +283,17 @@ requestBuilder.WithQueryParameter("orderBy", "createdDate");
 using var request = requestBuilder.Build(HttpMethod.Get);
 // Results in: GET /api/users/123/posts?pageSize=10&page=1&orderBy=createdDate
 ```
+
+Path, header and query values (and each item of a list) are written in a culture-independent form:
+
+| Value | Wire text |
+|---|---|
+| `DateTime`, `DateTimeOffset` | ISO 8601 (`"o"`), e.g. `1990-02-28T12:30:00.0000000+02:00` |
+| `DateOnly` | `yyyy-MM-dd` |
+| `TimeOnly` | `HH:mm:ss.FFFFFFF` |
+| Enum | the `[EnumMember]` or `[JsonStringEnumMemberName]` value; the number when the enum declares `JsonNumberEnumConverter<T>`; otherwise the member name |
+| Other `IFormattable` (`int`, `double`, `decimal`, ...) | formatted with `CultureInfo.InvariantCulture` |
+| Anything else | `ToString()` |
 
 ### 📎 File Upload (Multipart Form Data)
 
@@ -308,6 +328,31 @@ requestBuilder.WithFiles(files);
 
 using var request = requestBuilder.Build(HttpMethod.Post);
 ```
+
+Each `WithFormField` call adds a part, so a list is sent as one part per item with the same name:
+
+```csharp
+requestBuilder.WithFormField("items", "finance");
+requestBuilder.WithFormField("items", "q3");
+```
+
+### 📝 URL-Encoded Form Body
+
+For an `application/x-www-form-urlencoded` body (a login form, an OAuth token request), add the fields with
+`WithUrlEncodedFormField`. A repeated name sends one field per value:
+
+```csharp
+var requestBuilder = messageFactory.FromTemplate("/connect/token");
+requestBuilder.WithUrlEncodedFormField("grant_type", "client_credentials");
+requestBuilder.WithUrlEncodedFormField("scope", "orders.read");
+requestBuilder.WithUrlEncodedFormField("scope", "orders.write");
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+// Body: grant_type=client_credentials&scope=orders.read&scope=orders.write
+```
+
+URL-encoded fields cannot be combined with another body (JSON, binary or multipart); `Build` then throws an
+`InvalidOperationException`.
 
 ### 📁 File Upload with IFileContent
 
@@ -719,6 +764,7 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithQueryParameter(string name, object? value);
     IMessageRequestBuilder WithHeaderParameter(string name, object? value);
     IMessageRequestBuilder WithBody<TBody>(TBody body);
+    IMessageRequestBuilder WithBody<TBody>(TBody body, string contentType);
     HttpRequestMessage Build(HttpMethod method);
 
     // HTTP completion option for streaming
@@ -732,6 +778,9 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);
     IMessageRequestBuilder WithFiles(IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files);
     IMessageRequestBuilder WithFormField(string name, string value);
+
+    // URL-encoded form support
+    IMessageRequestBuilder WithUrlEncodedFormField(string name, string value);
 }
 ```
 
