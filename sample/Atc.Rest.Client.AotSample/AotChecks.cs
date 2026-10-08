@@ -32,6 +32,7 @@ public sealed class AotChecks
             ("DeserializeAsyncEnumerable<T>", CheckDeserializeAsyncEnumerableAsync),
             ("Response builder deserializes the success content", CheckResponseBuilderAsync),
             ("A type outside the context throws NotSupportedException", () => Run(CheckUnregisteredTypeThrows)),
+            ("Options without a resolver throw a clear InvalidOperationException", () => Run(CheckOptionsWithoutResolverThrow)),
             ("Path parameter enum uses [EnumMember]", () => Run(CheckPathEnum)),
             ("Header parameter enum uses [EnumMember]", () => Run(CheckHeaderEnum)),
             ("Query enum uses [JsonStringEnumMemberName]", () => Run(CheckQueryJsonStringEnumMemberName)),
@@ -166,6 +167,21 @@ public sealed class AotChecks
         }
 
         throw new InvalidOperationException("expected NotSupportedException, but deserialization succeeded");
+    }
+
+    private static void CheckOptionsWithoutResolverThrow()
+    {
+        try
+        {
+            _ = new DefaultJsonContractSerializer(new JsonSerializerOptions());
+        }
+        catch (InvalidOperationException ex)
+        {
+            ExpectContains(ex.Message, "TypeInfoResolverChain");
+            return;
+        }
+
+        throw new InvalidOperationException("expected InvalidOperationException");
     }
 
     private void CheckPathEnum()

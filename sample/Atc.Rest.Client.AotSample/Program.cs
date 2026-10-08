@@ -1,5 +1,5 @@
 var services = new ServiceCollection();
-services.AddAtcRestClientCore(o => o.TypeInfoResolverChain.Insert(0, SampleJsonContext.Default));
+services.ConfigureAtcRestClientJsonOptions(o => o.TypeInfoResolverChain.Insert(0, SampleJsonContext.Default));
 
 await using var provider = services.BuildServiceProvider();
 

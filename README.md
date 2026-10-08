@@ -99,8 +99,8 @@ services.AddAtcRestClientCore();
 // Or with a custom serializer
 services.AddAtcRestClientCore(myCustomSerializer);
 
-// Or adjust the default JSON options without restating them
-services.AddAtcRestClientCore(o => o.Converters.Add(new MyConverter()));
+// Or adjust the default JSON options without restating them (also registers the core services)
+services.ConfigureAtcRestClientJsonOptions(o => o.Converters.Add(new MyConverter()));
 ```
 
 #### Approach 2: Direct Configuration
@@ -155,8 +155,15 @@ resolver chain. Add your source-generated context for the types the client sends
 [JsonSerializable(typeof(ProblemDetails))]
 internal sealed partial class MyJsonContext : JsonSerializerContext;
 
-services.AddAtcRestClientCore(o => o.TypeInfoResolverChain.Insert(0, MyJsonContext.Default));
+services.ConfigureAtcRestClientJsonOptions(o => o.TypeInfoResolverChain.Insert(0, MyJsonContext.Default));
 ```
+
+`ConfigureAtcRestClientJsonOptions` can be called more than once, for example by each client library in an app. Every call
+adds a configure step. When the default `IContractSerializer` is first resolved, its options are created by
+`DefaultJsonContractSerializer.CreateDefaultOptions()` and then adjusted by every step in registration order, so the
+libraries' contexts and converters are all kept. A serializer instance registered with
+`AddAtcRestClientCore(mySerializer)` before them takes precedence, and so does a `JsonSerializerOptions` instance
+registered in the service collection; the configure steps are then ignored.
 
 A type that isn't in the context throws `NotSupportedException`. Reflection is never used as a fallback.
 
@@ -730,9 +737,9 @@ IServiceCollection AddAtcRestClientCore(
     this IServiceCollection services,
     IContractSerializer? contractSerializer = null)
 
-// Uses DefaultJsonContractSerializer with DefaultJsonContractSerializer.CreateDefaultOptions(),
-// adjusted by the configure action (for example to add a JsonSerializerContext)
-IServiceCollection AddAtcRestClientCore(
+// Adds a configure step for the options of the default serializer (for example to add a
+// JsonSerializerContext) and registers the core services. Every call's step is applied, in order.
+IServiceCollection ConfigureAtcRestClientJsonOptions(
     this IServiceCollection services,
     Action<JsonSerializerOptions> configureJsonSerializerOptions)
 ```

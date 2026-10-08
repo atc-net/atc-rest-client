@@ -76,13 +76,21 @@ public class DefaultJsonContractSerializer : IContractSerializer
     {
         if (!options.IsReadOnly)
         {
-            if (options.TypeInfoResolver is null && JsonSerializer.IsReflectionEnabledByDefault)
+            if (options.TypeInfoResolver is not null)
+            {
+                options.MakeReadOnly();
+            }
+            else if (JsonSerializer.IsReflectionEnabledByDefault)
             {
                 MakeReadOnlyWithReflectionResolver(options);
             }
             else
             {
-                options.MakeReadOnly();
+                throw new InvalidOperationException(
+                    "The JsonSerializerOptions have no TypeInfoResolver, and reflection-based serialization is disabled " +
+                    "(a trimmed or Native AOT app). Add a JsonSerializerContext to TypeInfoResolverChain, for example " +
+                    "services.ConfigureAtcRestClientJsonOptions(o => o.TypeInfoResolverChain.Insert(0, MyJsonContext.Default)), " +
+                    "or start from DefaultJsonContractSerializer.CreateDefaultOptions().");
             }
         }
 
