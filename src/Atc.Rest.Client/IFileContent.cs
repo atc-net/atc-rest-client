@@ -1,7 +1,7 @@
 namespace Atc.Rest.Client;
 
 /// <summary>
-/// Represents a file to be uploaded via <see cref="Builder.IMessageRequestBuilder.WithBody{TBody}"/>.
+/// Represents a file to be uploaded via <see cref="Builder.IMessageRequestBuilder.WithBody{TBody}(TBody)"/>.
 /// </summary>
 public interface IFileContent
 {

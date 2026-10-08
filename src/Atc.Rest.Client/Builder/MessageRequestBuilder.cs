@@ -8,8 +8,10 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private readonly Dictionary<string, string> headerMapper;
     private readonly Dictionary<string, string> queryMapper;
     private readonly List<KeyValuePair<string, string>> formFields;
+    private readonly List<KeyValuePair<string?, string?>> urlEncodedFormFields;
     private readonly List<(Stream Stream, string Name, string FileName, string? ContentType)> streamFiles;
     private string? content;
+    private string contentMediaType = "application/json";
     private List<IFileContent>? contentFormFiles;
     private (Stream Stream, string ContentType)? binaryContent;
 
@@ -23,6 +25,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         headerMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         queryMapper = new Dictionary<string, string>(StringComparer.Ordinal);
         formFields = [];
+        urlEncodedFormFields = [];
         streamFiles = [];
         WithHeaderParameter("accept", "application/json");
     }
@@ -51,6 +54,20 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
     private HttpContent? BuildContent(HttpRequestMessage message)
     {
+        if (urlEncodedFormFields.Count > 0)
+        {
+            if (content is not null ||
+                binaryContent.HasValue ||
+                streamFiles.Count > 0 ||
+                formFields.Count > 0 ||
+                contentFormFiles is not null)
+            {
+                throw new InvalidOperationException("URL-encoded form fields cannot be combined with another request body.");
+            }
+
+            return new FormUrlEncodedContent(urlEncodedFormFields);
+        }
+
         if (content is not null)
         {
             return BuildJsonContent();
@@ -77,7 +94,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private HttpContent BuildJsonContent()
     {
         var stringContent = new StringContent(content!);
-        stringContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+        stringContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentMediaType);
         return stringContent;
     }
 
@@ -174,6 +191,23 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
                 break;
         }
 
+        return this;
+    }
+
+    public IMessageRequestBuilder WithBody<TBody>(
+        TBody body,
+        string contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            throw new ArgumentException($"'{nameof(contentType)}' cannot be null or whitespace", nameof(contentType));
+        }
+
+        // Fail at the call, not at Build, for a malformed media type.
+        _ = MediaTypeHeaderValue.Parse(contentType);
+
+        WithBody(body);
+        contentMediaType = contentType;
         return this;
     }
 
@@ -392,6 +426,24 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         }
 
         formFields.Add(new KeyValuePair<string, string>(name, value));
+        return this;
+    }
+
+    public IMessageRequestBuilder WithUrlEncodedFormField(
+        string name,
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        urlEncodedFormFields.Add(new KeyValuePair<string?, string?>(name, value));
         return this;
     }
 
