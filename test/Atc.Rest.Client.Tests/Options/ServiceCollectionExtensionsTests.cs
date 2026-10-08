@@ -366,4 +366,39 @@ public sealed class ServiceCollectionExtensionsTests
         factory.CreateClient("SecureClient").BaseAddress.Should().Be(httpsAddress);
         factory.CreateClient("InsecureClient").BaseAddress.Should().Be(httpAddress);
     }
+
+    [Fact]
+    public void AddAtcRestClientCore_WithConfigure_AppliesConfigurationToDefaultOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        JsonSerializerOptions? configured = null;
+
+        // Act
+        services.AddAtcRestClientCore(o =>
+        {
+            o.TypeInfoResolverChain.Insert(0, TestJsonContext.Default);
+            configured = o;
+        });
+        var provider = services.BuildServiceProvider();
+        var serializer = provider.GetRequiredService<IContractSerializer>();
+
+        // Assert
+        serializer.Should().BeOfType<DefaultJsonContractSerializer>();
+        configured.Should().NotBeNull();
+        configured!.IsReadOnly.Should().BeTrue();
+        configured.PropertyNamingPolicy.Should().Be(JsonNamingPolicy.CamelCase);
+        configured.TypeInfoResolverChain[0].Should().BeSameAs(TestJsonContext.Default);
+        serializer.Serialize(new TestModel("Test", 42)).Should().Contain("\"name\":");
+    }
+
+    [Fact]
+    public void AddAtcRestClientCore_WithNullConfigure_Throws()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddAtcRestClientCore((Action<JsonSerializerOptions>)null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
 }

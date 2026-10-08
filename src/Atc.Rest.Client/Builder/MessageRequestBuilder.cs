@@ -164,13 +164,13 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
                 contentFormFiles = new List<IFileContent>(fileContents);
                 break;
             default:
-                if (TryWrapAsFileContent(body, out var wrapped))
+                // Duck-typing of file-like bodies (IFormFile, IBrowserFile) looks up members by reflection.
+                // It follows the reflection-based serialization switch, so trimmed and Native AOT apps,
+                // where that switch is off, must pass an IFileContent instead.
+                if (JsonSerializer.IsReflectionEnabledByDefault &&
+                    TryWrapAsFileContents(body, out var wrapped))
                 {
-                    contentFormFiles = [wrapped];
-                }
-                else if (TryWrapAsFileContentList(body, out var wrappedList))
-                {
-                    contentFormFiles = wrappedList;
+                    contentFormFiles = wrapped;
                 }
                 else
                 {
@@ -210,7 +210,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             throw new ArgumentException($"'{nameof(value)}' cannot be null or whitespace", nameof(value));
         }
 
-        pathMapper[name] = value.ToString();
+        pathMapper[name] = value.ToString()!;
 
         return this;
     }
@@ -229,7 +229,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             return this;
         }
 
-        headerMapper[name] = value.ToString();
+        headerMapper[name] = value.ToString()!;
 
         return this;
     }
@@ -298,10 +298,9 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             return this;
         }
 
-        var valueType = value.GetType();
-        if (valueType.IsEnum)
+        if (value is Enum)
         {
-            queryMapper[name] = GetEnumMemberValue(valueType, value.ToString()!) ?? value.ToString()!;
+            queryMapper[name] = GetEnumMemberValue(value) ?? value.ToString()!;
         }
         else if (value is DateTime dt)
         {
@@ -319,19 +318,30 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         return this;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "The trimmer keeps every field of an enum type that is kept, so the public fields of the value's enum type are available.")]
+    private static string? GetEnumMemberValue(object enumValue)
+        => GetEnumMemberValue(enumValue.GetType(), enumValue.ToString()!);
+
     /// <summary>
     /// Gets the EnumMemberAttribute value for an enum member, using a cache to avoid repeated reflection.
     /// </summary>
     private static string? GetEnumMemberValue(
-        Type enumType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumType,
         string memberName)
-        => EnumMemberCache.GetOrAdd((enumType, memberName), key =>
-            key.EnumType
-                .GetTypeInfo()
-                .DeclaredMembers
-                .FirstOrDefault(x => x.Name == key.MemberName)
-                ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
-                ?.Value);
+    {
+        var key = (enumType, memberName);
+        if (EnumMemberCache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var value = enumType
+            .GetField(memberName, BindingFlags.Public | BindingFlags.Static)
+            ?.GetCustomAttribute<EnumMemberAttribute>(inherit: false)
+            ?.Value;
+
+        return EnumMemberCache.GetOrAdd(key, value);
+    }
 
     private Uri BuildRequestUri()
     {
@@ -365,7 +375,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private static string BuildQueryKeyEqualValue(
         KeyValuePair<string, string> pair)
         => pair.Key.StartsWith("#", StringComparison.Ordinal)
-            ? $"{pair.Key.Replace("#", string.Empty)}={pair.Value}"
+            ? $"{pair.Key.Substring(1)}={pair.Value}"
             : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
 
     public IMessageRequestBuilder WithFile(
@@ -434,6 +444,20 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         return this;
     }
 
+    private static bool TryWrapAsFileContents(
+        object obj,
+        [NotNullWhen(true)] out List<IFileContent>? fileContents)
+    {
+        if (TryWrapAsFileContent(obj, out var wrapped))
+        {
+            fileContents = [wrapped];
+            return true;
+        }
+
+        return TryWrapAsFileContentList(obj, out fileContents);
+    }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "Only reached when reflection-based serialization is enabled; the feature switch removes this call in trimmed apps.")]
     private static bool TryWrapAsFileContent(
         object obj,
         [NotNullWhen(true)] out IFileContent? fileContent)
@@ -493,6 +517,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         return true;
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "Only reached when reflection-based serialization is enabled; the feature switch removes this call in trimmed apps.")]
     private static MethodInfo? FindOpenReadStreamMethod(Type type)
     {
         // Prefer parameterless OpenReadStream() (matches IFormFile)

@@ -15,6 +15,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [Approach 1: Core Services Only (No HttpClient Configuration)](#approach-1-core-services-only-no-httpclient-configuration)
       - [Approach 2: Direct Configuration](#approach-2-direct-configuration)
       - [Approach 3: Custom Options Type](#approach-3-custom-options-type)
+      - [✂️ Trimming and Native AOT](#️-trimming-and-native-aot)
     - [🔌 Creating an Endpoint](#-creating-an-endpoint)
   - [💡 Usage Examples](#-usage-examples)
     - [📥 Simple GET Request](#-simple-get-request)
@@ -61,6 +62,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
 - 🏷️ **Path Templates**: Support for URI templates with parameter replacement
 - 🔍 **Query & Header Parameters**: Easy addition of query strings and headers
 - 🔄 **Custom Serialization**: Pluggable contract serialization (defaults to JSON)
+- ✂️ **Trim and Native AOT Ready**: Annotated for trimming; plug in a source-generated `JsonSerializerContext`
 - ✅ **Response Processing**: Built-in support for success/error response handling
 - 📎 **Multipart Form Data**: File upload support with Stream-based API
 - 📤 **Binary Uploads**: Raw binary stream uploads (application/octet-stream)
@@ -95,6 +97,9 @@ services.AddAtcRestClientCore();
 
 // Or with a custom serializer
 services.AddAtcRestClientCore(myCustomSerializer);
+
+// Or adjust the default JSON options without restating them
+services.AddAtcRestClientCore(o => o.Converters.Add(new MyConverter()));
 ```
 
 #### Approach 2: Direct Configuration
@@ -133,6 +138,35 @@ services.AddAtcRestClient(
     clientName: "MyApiClient",
     options: options);
 ```
+
+#### ✂️ Trimming and Native AOT
+
+The package targets `netstandard2.0` and `net10.0`. The `net10.0` build is marked `IsAotCompatible` and is
+analyzed for trim and AOT safety.
+
+`DefaultJsonContractSerializer` resolves all JSON metadata through `JsonSerializerOptions.GetTypeInfo`. In a
+trimmed or Native AOT app, reflection-based serialization is off, so the default options start with an empty
+resolver chain. Add your source-generated context for the types the client sends and receives:
+
+```csharp
+[JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+[JsonSerializable(typeof(Order))]
+[JsonSerializable(typeof(ProblemDetails))]
+internal sealed partial class MyJsonContext : JsonSerializerContext;
+
+services.AddAtcRestClientCore(o => o.TypeInfoResolverChain.Insert(0, MyJsonContext.Default));
+```
+
+A type that isn't in the context throws `NotSupportedException`. Reflection is never used as a fallback.
+
+> **Notes:**
+>
+> - When reflection is enabled (the default for regular apps), the default options also write enums as strings
+>   through `JsonStringEnumConverter`. That converter isn't AOT-safe, so in trimmed apps enum handling comes from
+>   your context, for example `UseStringEnumConverter = true` or a per-enum `JsonStringEnumConverter<TEnum>`.
+> - `DefaultJsonContractSerializer` makes the options it is given read-only when it is constructed.
+> - Automatic detection of file-like bodies (`IFormFile`, `IBrowserFile`) uses reflection and is turned off when
+>   reflection-based serialization is off. In trimmed apps, pass an `IFileContent` instead.
 
 ### 🔌 Creating an Endpoint
 
@@ -316,7 +350,8 @@ using var response = await client.SendAsync(request, cancellationToken);
 > }
 > ```
 >
-> For compile-time type safety, implement `IFileContent` explicitly.
+> For compile-time type safety, implement `IFileContent` explicitly. Detection uses reflection, so it is off in
+> trimmed and Native AOT apps (see [Trimming and Native AOT](#️-trimming-and-native-aot)).
 
 ### 📤 Binary Upload (Raw Stream)
 
@@ -623,6 +658,12 @@ Registers core services (`IHttpMessageFactory` and `IContractSerializer`) withou
 IServiceCollection AddAtcRestClientCore(
     this IServiceCollection services,
     IContractSerializer? contractSerializer = null)
+
+// Uses DefaultJsonContractSerializer with DefaultJsonContractSerializer.CreateDefaultOptions(),
+// adjusted by the configure action (for example to add a JsonSerializerContext)
+IServiceCollection AddAtcRestClientCore(
+    this IServiceCollection services,
+    Action<JsonSerializerOptions> configureJsonSerializerOptions)
 ```
 
 #### `AddAtcRestClient` Extension Methods (Internal)

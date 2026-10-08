@@ -27,6 +27,33 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers the core Atc.Rest.Client services (IHttpMessageFactory and IContractSerializer)
+    /// without HttpClient configuration, using a <see cref="DefaultJsonContractSerializer"/> whose
+    /// default options are adjusted by <paramref name="configureJsonSerializerOptions"/>.
+    /// </summary>
+    /// <remarks>
+    /// For trimmed and Native AOT apps, add the app's <see cref="System.Text.Json.Serialization.JsonSerializerContext"/>:
+    /// <c>services.AddAtcRestClientCore(o => o.TypeInfoResolverChain.Insert(0, MyJsonContext.Default));</c>
+    /// </remarks>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureJsonSerializerOptions">Configures the options created by <see cref="DefaultJsonContractSerializer.CreateDefaultOptions"/>.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddAtcRestClientCore(
+        this IServiceCollection services,
+        Action<JsonSerializerOptions> configureJsonSerializerOptions)
+    {
+        if (configureJsonSerializerOptions is null)
+        {
+            throw new ArgumentNullException(nameof(configureJsonSerializerOptions));
+        }
+
+        var options = DefaultJsonContractSerializer.CreateDefaultOptions();
+        configureJsonSerializerOptions(options);
+
+        return services.AddAtcRestClientCore(new DefaultJsonContractSerializer(options));
+    }
+
+    /// <summary>
     /// Registers a named HttpClient with the specified options and core Atc.Rest.Client services.
     /// </summary>
     /// <typeparam name="TOptions">The type of options, must inherit from <see cref="AtcRestClientOptions"/>.</typeparam>

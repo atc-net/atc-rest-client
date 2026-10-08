@@ -432,4 +432,114 @@ public sealed class DefaultJsonContractSerializerTests
         result.Should().NotBeNull();
         result!.Name.Should().Be("日本語テスト");
     }
+
+    [Fact]
+    public void CreateDefaultOptions_ReturnsNewMutableInstanceWithDefaults()
+    {
+        var first = DefaultJsonContractSerializer.CreateDefaultOptions();
+        var second = DefaultJsonContractSerializer.CreateDefaultOptions();
+
+        first.Should().NotBeSameAs(second);
+        first.IsReadOnly.Should().BeFalse();
+        first.PropertyNamingPolicy.Should().Be(JsonNamingPolicy.CamelCase);
+        first.DefaultIgnoreCondition.Should().Be(JsonIgnoreCondition.WhenWritingNull);
+        first.WriteIndented.Should().BeTrue();
+        first.TypeInfoResolver.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Constructor_MakesProvidedOptionsReadOnly()
+    {
+        var options = new JsonSerializerOptions();
+
+        _ = new DefaultJsonContractSerializer(options);
+
+        options.IsReadOnly.Should().BeTrue();
+        options.TypeInfoResolver.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void WithSourceGeneratedContextOnly_RoundTripsRegisteredType()
+    {
+        var serializer = new DefaultJsonContractSerializer(CreateContextOnlyOptions());
+        var json = serializer.Serialize(new TestModel("Test", 42));
+
+        var generic = serializer.Deserialize<TestModel>(json);
+        var byType = serializer.Deserialize(json, typeof(TestModel));
+
+        json.Should().Contain("\"name\":");
+        generic.Should().Be(new TestModel("Test", 42));
+        byType.Should().Be(new TestModel("Test", 42));
+    }
+
+    [Fact]
+    public async Task WithSourceGeneratedContextOnly_DeserializesAsyncEnumerable()
+    {
+        var serializer = new DefaultJsonContractSerializer(CreateContextOnlyOptions());
+        using var stream = new MemoryStream("""[{"name":"A","value":1},{"name":"B","value":2}]"""u8.ToArray());
+
+        var items = new List<TestModel?>();
+        await foreach (var item in serializer.DeserializeAsyncEnumerable<TestModel>(stream, TestContext.Current.CancellationToken))
+        {
+            items.Add(item);
+        }
+
+        items.Should().Equal(new TestModel("A", 1), new TestModel("B", 2));
+    }
+
+    [Fact]
+    public void WithSourceGeneratedContextOnly_DoesNotFallBackToReflection()
+    {
+        var serializer = new DefaultJsonContractSerializer(CreateContextOnlyOptions());
+
+        var act = () => serializer.Deserialize<StatusContainer>("""{"status":"Active"}""");
+
+        act.Should().Throw<NotSupportedException>();
+    }
+
+    private static JsonSerializerOptions CreateContextOnlyOptions()
+        => new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            TypeInfoResolver = TestJsonContext.Default,
+        };
+
+    [Fact]
+    public void Serialize_Null_ReturnsJsonNull()
+    {
+        var json = sut.Serialize(null!);
+
+        json.Should().Be("null");
+    }
+
+    [Fact]
+    public void Constructor_AcceptsAlreadyReadOnlyOptions()
+    {
+        var options = DefaultJsonContractSerializer.CreateDefaultOptions();
+        options.MakeReadOnly();
+
+        var serializer = new DefaultJsonContractSerializer(options);
+
+        serializer.Serialize(new TestModel("Test", 42)).Should().Contain("\"name\":");
+    }
+
+    [Fact]
+    public void Constructor_KeepsExplicitResolver()
+    {
+        var options = CreateContextOnlyOptions();
+
+        _ = new DefaultJsonContractSerializer(options);
+
+        options.TypeInfoResolver.Should().BeSameAs(TestJsonContext.Default);
+    }
+
+    [Fact]
+    public void WithSourceGeneratedContextOnly_DeserializesBytesByType()
+    {
+        var serializer = new DefaultJsonContractSerializer(CreateContextOnlyOptions());
+
+        var result = serializer.Deserialize("""{"name":"Test","value":42}"""u8.ToArray(), typeof(TestModel));
+
+        result.Should().Be(new TestModel("Test", 42));
+    }
 }
