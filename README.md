@@ -302,6 +302,8 @@ using var request = requestBuilder.Build(HttpMethod.Get);
 // Results in: GET /api/users/123/posts?pageSize=10&page=1&orderBy=createdDate
 ```
 
+Query keys and values are URI-escaped, so a key such as `filter[name]` (an OpenAPI `deepObject`) is sent as `filter%5Bname%5D`, and a key with `&`, `=`, `#` or a space stays one key.
+
 Path, header and query values (and each item of a list) are written in a culture-independent form:
 
 | Value | Wire text |

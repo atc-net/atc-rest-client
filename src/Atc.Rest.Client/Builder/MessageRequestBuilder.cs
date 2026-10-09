@@ -306,21 +306,22 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             return this;
         }
 
+        var escapedName = Uri.EscapeDataString(name);
         var sb = new StringBuilder();
         foreach (var value in values.OfType<object>())
         {
             var wireValue = Uri.EscapeDataString(WireValueFormatter.ToWireString(value));
             sb.Append(sb.Length == 0
                 ? wireValue
-                : $"&{name}={wireValue}");
+                : $"&{escapedName}={wireValue}");
         }
 
         if (sb.Length > 0)
         {
             // The "#" prefix marks this value as pre-encoded to prevent double-encoding
             // in BuildQueryKeyEqualValue(). Array values are already URI-escaped here,
-            // so they should be emitted as-is when building the query string.
-            queryMapper["#" + name] = sb.ToString();
+            // so they should be emitted as-is when building the query string. The key is stored escaped too.
+            queryMapper["#" + escapedName] = sb.ToString();
         }
 
         return this;
@@ -370,7 +371,9 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     /// Builds a "key=value" query string segment from a key-value pair.
     /// </summary>
     /// <remarks>
-    /// Keys prefixed with "#" indicate pre-encoded values (used for array parameters).
+    /// The key is always URI-encoded, so a name such as <c>filter[name]</c> (an OpenAPI deepObject)
+    /// or one with <c>&amp;</c>, <c>=</c>, <c>#</c> or a space stays one key.
+    /// Keys prefixed with "#" indicate a pre-encoded key and values (used for array parameters).
     /// These values are emitted as-is without additional URI encoding.
     /// Regular keys have their values URI-encoded to ensure proper escaping.
     /// </remarks>
@@ -378,7 +381,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         KeyValuePair<string, string> pair)
         => pair.Key.StartsWith("#", StringComparison.Ordinal)
             ? $"{pair.Key.Substring(1)}={pair.Value}"
-            : $"{pair.Key}={Uri.EscapeDataString(pair.Value)}";
+            : $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}";
 
     public IMessageRequestBuilder WithFile(
         Stream stream,

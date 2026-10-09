@@ -194,6 +194,35 @@ public sealed class MessageRequestBuilderWireFormatTests
         BuildUri(sut).Should().Be("/api?set=true");
     }
 
+    [Theory]
+    [InlineData("filter[name]", "a b", "/api?filter%5Bname%5D=a%20b")]
+    [InlineData("a&b", "1", "/api?a%26b=1")]
+    [InlineData("a=b", "1", "/api?a%3Db=1")]
+    [InlineData("a b", "1", "/api?a%20b=1")]
+    [InlineData("a#b", "1", "/api?a%23b=1")]
+    [InlineData("page-size_v2.x~", "1", "/api?page-size_v2.x~=1")]
+    public void WithQueryParameter_Key_IsEscaped(
+        string name,
+        string value,
+        string expected)
+    {
+        var sut = CreateSut();
+
+        sut.WithQueryParameter(name, value);
+
+        BuildUri(sut).Should().Be(expected);
+    }
+
+    [Fact]
+    public void WithQueryParameter_ArrayKey_IsEscaped_ForEveryItem()
+    {
+        var sut = CreateSut();
+
+        sut.WithQueryParameter("ids[]", new[] { 1, 2 });
+
+        BuildUri(sut).Should().Be("/api?ids%5B%5D=1&ids%5B%5D=2");
+    }
+
     private static string BuildUri(MessageRequestBuilder sut)
         => sut.Build(HttpMethod.Get).RequestUri!.OriginalString;
 
