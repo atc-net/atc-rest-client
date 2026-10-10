@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/atc-net/atc-rest-client/compare/v2.2.0...v2.3.0) (2026-10-10)
+
+
+### New features
+
+* **builder:** add WithFormField with a content type and WithFormJsonField ([9aaf23d](https://github.com/atc-net/atc-rest-client/commit/9aaf23def223c0fb6c68a174afb5f9ec31a1c3e6))
+
 ## [2.2.0](https://github.com/atc-net/atc-rest-client/compare/v2.1.0...v2.2.0) (2026-10-09)
 
 
