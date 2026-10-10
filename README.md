@@ -357,6 +357,25 @@ requestBuilder.WithFormField("items", "finance");
 requestBuilder.WithFormField("items", "q3");
 ```
 
+A form field is sent as `text/plain`. For an object field, OpenAPI's default is an `application/json` part;
+`WithFormJsonField` serializes the value with the configured JSON options (as `WithBody` does) and sends it that way:
+
+```csharp
+requestBuilder.WithFile(fileStream, "file", "invoice.pdf", "application/pdf");
+requestBuilder.WithFormJsonField("address", new Address("Main Street 1", "Contoso"));
+// Content-Disposition: form-data; name=address
+// Content-Type: application/json; charset=utf-8
+//
+// {"street":"Main Street 1","city":"Contoso"}   (indented with the default JSON options)
+```
+
+For a value that is already text, pass the part's media type to `WithFormField`. `charset=utf-8` is added when the
+media type names no charset:
+
+```csharp
+requestBuilder.WithFormField("rows", "id;name\n1;Contoso", "text/csv");
+```
+
 ### 📝 URL-Encoded Form Body
 
 For an `application/x-www-form-urlencoded` body (a login form, an OAuth token request), add the fields with
@@ -816,6 +835,8 @@ public interface IMessageRequestBuilder
     IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);
     IMessageRequestBuilder WithFiles(IEnumerable<(Stream Stream, string Name, string FileName, string? ContentType)> files);
     IMessageRequestBuilder WithFormField(string name, string value);
+    IMessageRequestBuilder WithFormField(string name, string value, string contentType);
+    IMessageRequestBuilder WithFormJsonField<TValue>(string name, TValue value);
 
     // URL-encoded form support
     IMessageRequestBuilder WithUrlEncodedFormField(string name, string value);
