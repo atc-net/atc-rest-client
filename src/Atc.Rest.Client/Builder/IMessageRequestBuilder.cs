@@ -175,6 +175,42 @@ public interface IMessageRequestBuilder
         string value);
 
     /// <summary>
+    /// Adds a form field with the given media type to the multipart form data content (a part whose body is
+    /// <paramref name="value"/> and whose Content-Type is <paramref name="contentType"/>, e.g. application/json).
+    /// Each call adds a part, so a repeated name sends one part per value, in call order.
+    /// </summary>
+    /// <remarks>
+    /// The value is sent as UTF-8. When <paramref name="contentType"/> names no charset, <c>charset=utf-8</c>
+    /// is added; a charset given by the caller is kept as written and the value is not re-encoded.
+    /// </remarks>
+    /// <param name="name">The form field name.</param>
+    /// <param name="value">The form field value.</param>
+    /// <param name="contentType">The media type of the part, e.g. <c>application/json</c>.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    /// <exception cref="FormatException">Thrown when <paramref name="contentType"/> is not a valid media type.</exception>
+    IMessageRequestBuilder WithFormField(
+        string name,
+        string value,
+        string contentType);
+
+    /// <summary>
+    /// Adds a form field whose value is serialized with the builder's contract serializer and sent as an
+    /// application/json part.
+    /// </summary>
+    /// <remarks>
+    /// The value is serialized as <see cref="WithBody{TBody}(TBody)"/> serializes a body, so the part follows
+    /// the configured JSON options. A <see langword="null"/> value is sent as the JSON literal <c>null</c>.
+    /// Each call adds a part, so a repeated name sends one part per value, in call order.
+    /// </remarks>
+    /// <typeparam name="TValue">The type of the value.</typeparam>
+    /// <param name="name">The form field name.</param>
+    /// <param name="value">The value to serialize.</param>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithFormJsonField<TValue>(
+        string name,
+        TValue value);
+
+    /// <summary>
     /// Adds a field to an <c>application/x-www-form-urlencoded</c> request body.
     /// </summary>
     /// <remarks>
