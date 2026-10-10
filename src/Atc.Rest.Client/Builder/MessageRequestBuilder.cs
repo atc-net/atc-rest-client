@@ -7,7 +7,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private readonly Dictionary<string, string> pathMapper;
     private readonly Dictionary<string, string> headerMapper;
     private readonly Dictionary<string, string> queryMapper;
-    private readonly List<KeyValuePair<string, string>> formFields;
+    private readonly List<(string Name, string Value, string? ContentType)> formFields;
     private readonly List<KeyValuePair<string?, string?>> urlEncodedFormFields;
     private readonly List<(Stream Stream, string Name, string FileName, string? ContentType)> streamFiles;
     private string? content;
@@ -113,7 +113,17 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
 
         foreach (var formField in formFields)
         {
-            formDataContent.Add(new StringContent(formField.Value), formField.Key);
+            var stringContent = new StringContent(formField.Value);
+            if (formField.ContentType is not null)
+            {
+                var mediaType = MediaTypeHeaderValue.Parse(formField.ContentType);
+
+                // StringContent writes UTF-8, so say so unless the caller named a charset.
+                mediaType.CharSet ??= "utf-8";
+                stringContent.Headers.ContentType = mediaType;
+            }
+
+            formDataContent.Add(stringContent, formField.Name);
         }
 
         foreach (var file in streamFiles)
@@ -438,8 +448,52 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             throw new ArgumentNullException(nameof(value));
         }
 
-        formFields.Add(new KeyValuePair<string, string>(name, value));
+        formFields.Add((name, value, ContentType: null));
         return this;
+    }
+
+    public IMessageRequestBuilder WithFormField(
+        string name,
+        string value,
+        string contentType)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            throw new ArgumentException($"'{nameof(contentType)}' cannot be null or whitespace", nameof(contentType));
+        }
+
+        // Fail at the call, not at Build, for a malformed media type.
+        _ = MediaTypeHeaderValue.Parse(contentType);
+
+        formFields.Add((name, value, contentType));
+        return this;
+    }
+
+    public IMessageRequestBuilder WithFormJsonField<TValue>(
+        string name,
+        TValue value)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
+        }
+
+        // An explicit null is a value: the JSON literal null.
+        var json = value is null
+            ? "null"
+            : serializer.Serialize(value);
+
+        return WithFormField(name, json, "application/json");
     }
 
     public IMessageRequestBuilder WithUrlEncodedFormField(
