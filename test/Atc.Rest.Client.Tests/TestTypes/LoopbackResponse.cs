@@ -41,6 +41,24 @@ internal sealed class LoopbackResponse
         return WriteToSocketAsync(Encoding.ASCII.GetBytes(head.ToString()));
     }
 
+    // Completes when the client has closed the connection (or sent more, which a test client does not).
+    public async Task WaitForDisconnectAsync(
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[1];
+        try
+        {
+            while (await stream.ReadAsync(buffer, cancellationToken) > 0)
+            {
+                // Nothing is expected; read on until the connection ends.
+            }
+        }
+        catch (IOException)
+        {
+            // A reset connection is a closed connection.
+        }
+    }
+
     public Task WriteAsync(string text)
         => WriteAsync(Encoding.UTF8.GetBytes(text));
 

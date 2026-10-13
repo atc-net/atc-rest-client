@@ -14,13 +14,16 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private readonly IContractSerializer serializer;
     private readonly Dictionary<HttpStatusCode, (ContentSerializerDelegate Serializer, Type TargetType)> responseSerializers;
     private readonly Dictionary<HttpStatusCode, bool> responseCodes;
+    private readonly int maxStreamRecordLength;
 
     public MessageResponseBuilder(
         HttpResponseMessage? response,
-        IContractSerializer serializer)
+        IContractSerializer serializer,
+        int maxStreamRecordLength = AtcRestClientOptions.DefaultMaxStreamRecordLength)
     {
         this.response = response;
         this.serializer = serializer;
+        this.maxStreamRecordLength = maxStreamRecordLength;
         responseSerializers = [];
         responseCodes = [];
     }
@@ -234,14 +237,26 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         }
 
         var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var maxRecordLength = StreamRecordLimit.Validate(maxStreamRecordLength);
 
-        await foreach (var item in serializer.DeserializeAsyncEnumerable<T>(stream, cancellationToken).ConfigureAwait(false))
+        await foreach (var item in StreamRecordReaders.ReadJsonArrayAsync<T>(stream, serializer, maxRecordLength, cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }
     }
 
+    public Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        CancellationToken cancellationToken = default)
+        => BuildStreamingEndpointResponseAsync<T>(StreamFraming.JsonArray, options: null, cancellationToken);
+
+    public Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        StreamFraming framing,
+        CancellationToken cancellationToken = default)
+        => BuildStreamingEndpointResponseAsync<T>(framing, options: null, cancellationToken);
+
     public async Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        StreamFraming framing,
+        StreamReadOptions? options,
         CancellationToken cancellationToken = default)
     {
         if (response is null)
@@ -254,39 +269,64 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 httpResponse: null);
         }
 
-        if (!response.IsSuccessStatusCode)
+        // The result owns the HTTP response; without a result, nothing else would dispose it.
+        try
         {
-            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+            var maxRecordLength = StreamRecordLimit.Validate(options?.MaxRecordLength ?? maxStreamRecordLength);
+            if (!Enum.IsDefined(typeof(StreamFraming), framing))
+            {
+                throw new ArgumentOutOfRangeException(nameof(framing), framing, "Unknown stream framing.");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var (errorContent, errorContentObject) = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
+
+                return new StreamingEndpointResponse<T>(
+                    isSuccess: false,
+                    response.StatusCode,
+                    content: null,
+                    errorContent,
+                    httpResponse: response,
+                    errorContentObject,
+                    GetHeaders(response));
+            }
+
+            var content = await ReadStreamContentAsync<T>(response, framing, maxRecordLength, options?.ItemEventNames, cancellationToken).ConfigureAwait(false);
 
             return new StreamingEndpointResponse<T>(
-                isSuccess: false,
+                isSuccess: true,
                 response.StatusCode,
-                content: null,
-                errorContent,
+                content,
+                errorContent: null,
                 httpResponse: response,
-                errorContentObject,
+                errorContentObject: null,
                 GetHeaders(response));
         }
-
-        var stream = await response
-            .Content
-            .ReadAsStreamAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        var content = serializer.DeserializeAsyncEnumerable<T>(stream, cancellationToken);
-
-        return new StreamingEndpointResponse<T>(
-            isSuccess: true,
-            response.StatusCode,
-            content,
-            errorContent: null,
-            httpResponse: response,
-            errorContentObject: null,
-            GetHeaders(response));
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
     }
+
+    public Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>
+        => BuildStreamingEndpointResponseAsync<T, TResult>(factory, StreamFraming.JsonArray, options: null, cancellationToken);
+
+    public Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        StreamFraming framing,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>
+        => BuildStreamingEndpointResponseAsync<T, TResult>(factory, framing, options: null, cancellationToken);
 
     public async Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
         Func<StreamingEndpointResponse<T>, TResult> factory,
+        StreamFraming framing,
+        StreamReadOptions? options,
         CancellationToken cancellationToken = default)
         where TResult : StreamingEndpointResponse<T>
     {
@@ -295,7 +335,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             throw new ArgumentNullException(nameof(factory));
         }
 
-        var streamingResponse = await BuildStreamingEndpointResponseAsync<T>(cancellationToken).ConfigureAwait(false);
+        var streamingResponse = await BuildStreamingEndpointResponseAsync<T>(framing, options, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -306,6 +346,51 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             streamingResponse.Dispose();
             throw;
         }
+    }
+
+    private async Task<IAsyncEnumerable<T?>> ReadStreamContentAsync<T>(
+        HttpResponseMessage responseMessage,
+        StreamFraming framing,
+        int maxRecordLength,
+        IReadOnlyCollection<string>? itemEventNames,
+        CancellationToken cancellationToken)
+    {
+        var boundary = framing == StreamFraming.MultipartMixed
+            ? GetMultipartBoundary(responseMessage)
+            : string.Empty;
+
+        var stream = await responseMessage
+            .Content
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return framing switch
+        {
+            StreamFraming.JsonLines => StreamRecordReaders.ReadJsonLinesAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
+            StreamFraming.JsonSequence => StreamRecordReaders.ReadJsonSequenceAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
+            StreamFraming.ServerSentEvents => StreamRecordReaders.ReadServerSentEventsAsync<T>(stream, serializer, maxRecordLength, itemEventNames, cancellationToken),
+            StreamFraming.MultipartMixed => StreamRecordReaders.ReadMultipartMixedAsync<T>(stream, boundary, serializer, maxRecordLength, cancellationToken),
+            _ => StreamRecordReaders.ReadJsonArrayAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
+        };
+    }
+
+    private static string GetMultipartBoundary(
+        HttpResponseMessage responseMessage)
+    {
+        var boundary = responseMessage
+            .Content
+            .Headers
+            .ContentType?
+            .Parameters
+            .FirstOrDefault(x => string.Equals(x.Name, "boundary", StringComparison.OrdinalIgnoreCase))?
+            .Value?
+            .Trim('"');
+
+        return string.IsNullOrWhiteSpace(boundary)
+            ? throw new InvalidDataException(
+                "The Content-Type of the response has no boundary parameter, which a multipart/mixed stream is split on " +
+                $"(Content-Type: {responseMessage.Content.Headers.ContentType?.ToString() ?? "none"}).")
+            : boundary!;
     }
 
     private static bool UseReadAsStringFromContentDependingOnContentType(
