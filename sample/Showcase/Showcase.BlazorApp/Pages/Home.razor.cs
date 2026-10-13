@@ -5,6 +5,9 @@ public sealed partial class Home : IDisposable
 {
     private const int LogLength = 12;
     private const int HugeLimit = 1024;
+    private const int MaxReconnectsInARow = 5;
+
+    private static readonly TimeSpan DefaultRetry = TimeSpan.FromSeconds(3);
 
     private static readonly StreamFraming[] Framings =
     [
@@ -22,11 +25,18 @@ public sealed partial class Home : IDisposable
     private CancellationTokenSource? streaming;
     private StreamFraming framing = StreamFraming.ServerSentEvents;
     private bool isStreaming;
+    private bool isLive;
     private bool isBusy;
     private string status = "Not started";
     private string? contentType;
     private int itemCount;
     private decimal elapsedSeconds;
+    private string? lastEventId;
+    private string? eventName;
+    private TimeSpan? retry;
+    private int reconnects;
+    private int reconnectsInARow;
+    private bool isResumed;
     private Failure? failure;
 
     [Inject]
@@ -57,39 +67,37 @@ public sealed partial class Home : IDisposable
         streaming = new CancellationTokenSource();
         var cancellationToken = streaming.Token;
 
-        quotes.Clear();
-        log.Clear();
-        itemCount = 0;
-        elapsedSeconds = 0;
-        contentType = null;
+        Reset();
         isStreaming = true;
         status = "Connecting";
 
+        var clock = Stopwatch.StartNew();
+
         try
         {
-            // Disposing the result ends the stream: the browser aborts the request
-            using var result = await Prices.StreamAsync(framing, cancellationToken);
-            contentType = result.ContentType;
-
-            if (!result.IsSuccess)
+            while (true)
             {
-                status = $"Failed: {(int)result.StatusCode} {result.StatusCode}";
-                return;
-            }
-
-            status = "Live";
-            var clock = Stopwatch.StartNew();
-
-            await foreach (var tick in result.Content!.WithCancellation(cancellationToken))
-            {
-                if (tick is not null)
+                try
                 {
-                    Show(tick, clock.ElapsedMilliseconds);
+                    await ReadAsync(clock, cancellationToken);
+                    return;
+                }
+                catch (Exception ex) when (CanResume(ex, cancellationToken))
+                {
+                    // The library does not reconnect by itself: when, and how often, is for the app to decide.
+                    // It waits as long as the server asked for with retry:
+                    var wait = retry ?? DefaultRetry;
+
+                    reconnectsInARow++;
+                    reconnects++;
+                    isResumed = true;
+                    isLive = false;
+                    status = $"Connection lost after event {lastEventId} - connecting again in {Format((decimal)wait.TotalSeconds)} s";
                     StateHasChanged();
+
+                    await Task.Delay(wait, cancellationToken);
                 }
             }
-
-            status = "The server ended the stream";
         }
         catch (Exception ex) when (cancellationToken.IsCancellationRequested || ex is OperationCanceledException)
         {
@@ -103,11 +111,92 @@ public sealed partial class Home : IDisposable
         finally
         {
             isStreaming = false;
+            isLive = false;
         }
     }
 
+    private void Reset()
+    {
+        quotes.Clear();
+        log.Clear();
+        itemCount = 0;
+        elapsedSeconds = 0;
+        contentType = null;
+        lastEventId = null;
+        eventName = null;
+        retry = null;
+        reconnects = 0;
+        reconnectsInARow = 0;
+        isResumed = false;
+    }
+
+    // One response, read to its end - from the start, or after the last event of the response before it.
+    private async Task ReadAsync(
+        Stopwatch clock,
+        CancellationToken cancellationToken)
+    {
+        // Disposing the result ends the stream: the browser aborts the request
+        using var result = await Prices.StreamAsync(framing, lastEventId, Show, cancellationToken);
+        contentType = result.ContentType;
+
+        if (!result.IsSuccess)
+        {
+            status = $"Failed: {(int)result.StatusCode} {result.StatusCode}";
+            return;
+        }
+
+        status = isResumed ? $"Live - resumed after event {lastEventId}" : "Live";
+        isLive = true;
+        StateHasChanged();
+
+        await foreach (var tick in result.Content!.WithCancellation(cancellationToken))
+        {
+            // Where to continue, should the connection be lost after this item
+            lastEventId = result.LastEventId ?? lastEventId;
+            reconnectsInARow = 0;
+
+            if (tick is not null)
+            {
+                Show(tick, clock.ElapsedMilliseconds);
+                StateHasChanged();
+            }
+        }
+
+        status = "The server ended the stream";
+    }
+
+    // A stream can be continued when it has ids - of the five framings only server-sent events have - and it was
+    // the connection that failed, not a record that was refused.
+    private bool CanResume(
+        Exception exception,
+        CancellationToken cancellationToken)
+        => !cancellationToken.IsCancellationRequested &&
+           exception is not (OperationCanceledException or InvalidDataException or System.Text.Json.JsonException) &&
+           framing == StreamFraming.ServerSentEvents &&
+           !string.IsNullOrEmpty(lastEventId) &&
+           reconnectsInARow < MaxReconnectsInARow;
+
     private void Stop()
         => streaming?.Cancel();
+
+    private async Task DropAsync()
+    {
+        try
+        {
+            await Prices.DropConnectionsAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            status = $"Failed: {ex.GetType().Name}: {ex.Message}";
+        }
+    }
+
+    // StreamReadOptions.OnEvent: what an event says besides its data, just before its item is yielded
+    private void Show(ServerSentEventInfo info)
+    {
+        eventName = info.EventName ?? "(unnamed)";
+        retry = info.Retry;
+    }
 
     private void Show(
         PriceTick tick,
@@ -116,7 +205,8 @@ public sealed partial class Home : IDisposable
         var ticks = quotes.TryGetValue(tick.Symbol, out var previous) ? previous.Ticks + 1 : 1;
         quotes[tick.Symbol] = new Quote(tick.Symbol, tick.Price, tick.Change, ticks);
 
-        log.Insert(0, new LogEntry(elapsedMilliseconds, tick));
+        log.Insert(0, new LogEntry(elapsedMilliseconds, tick, isResumed));
+        isResumed = false;
         if (log.Count > LogLength)
         {
             log.RemoveAt(log.Count - 1);

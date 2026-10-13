@@ -11,13 +11,26 @@ public static class PriceEndpoints
 
     private const char RecordSeparator = '\u001e';
 
+    private const int RetryMilliseconds = 2000;
+
     private static readonly TimeSpan Pace = TimeSpan.FromMilliseconds(350);
     private static readonly string[] Symbols = ["ATC", "NET", "SSE", "API"];
+
+    // One market for every connection, so a client that comes back finds the prices where it left them
+    private static readonly Dictionary<string, decimal> Prices = Symbols.ToDictionary(x => x, _ => 100m, StringComparer.Ordinal);
+    private static readonly Lock PricesLock = new();
+
+    // Raised by DropAsync; a stream that sees it change cuts its connection
+    private static long drops;
 
     /// <summary>
     /// A price about three times a second, for as long as the client reads, in the framing the client asks for
     /// with <c>?framing=</c> (server-sent events when it does not).
     /// </summary>
+    /// <remarks>
+    /// Every server-sent event has an id. A client that sends the last one it saw as <c>Last-Event-ID</c> is
+    /// continued after it - the numbers of the prices go on without a gap.
+    /// </remarks>
     /// <param name="context">The HTTP context.</param>
     /// <returns>A task that completes when the client stops reading.</returns>
     public static async Task StreamAsync(HttpContext context)
@@ -33,7 +46,9 @@ public static class PriceEndpoints
         context.Response.Headers.CacheControl = "no-cache";
         context.Response.Headers["X-Stream-Framing"] = framing.ToString();
 
-        var prices = Symbols.ToDictionary(x => x, _ => 100m, StringComparer.Ordinal);
+        // What a browser's EventSource sends by itself when it connects again; here the app does
+        _ = long.TryParse(context.Request.Headers["Last-Event-ID"], NumberStyles.None, CultureInfo.InvariantCulture, out var sequence);
+        var dropsAtStart = Interlocked.Read(ref drops);
 
         try
         {
@@ -42,11 +57,23 @@ public static class PriceEndpoints
                 await WriteAsync(context, "[").ConfigureAwait(false);
             }
 
-            var sequence = 0L;
+            if (framing == StreamFraming.ServerSentEvents)
+            {
+                // How long a client is to wait before it connects again, in milliseconds
+                await WriteAsync(context, $"retry: {RetryMilliseconds}\n\n").ConfigureAwait(false);
+            }
+
             while (!context.RequestAborted.IsCancellationRequested)
             {
+                if (Interlocked.Read(ref drops) != dropsAtStart)
+                {
+                    // The connection is lost: no end of the response is written
+                    context.Abort();
+                    return;
+                }
+
                 sequence++;
-                var tick = NextTick(prices, sequence);
+                var tick = NextTick(sequence);
                 var json = JsonSerializer.Serialize(tick, ShowcaseJsonContext.Default.PriceTick);
 
                 await WriteAsync(context, FrameRecord(framing, json, sequence)).ConfigureAwait(false);
@@ -57,6 +84,17 @@ public static class PriceEndpoints
         {
             // The client stopped reading.
         }
+    }
+
+    /// <summary>
+    /// Cuts the connection of every price stream that is open, as a network that fails would.
+    /// </summary>
+    /// <returns>204 No Content.</returns>
+    public static IResult Drop()
+    {
+        Interlocked.Increment(ref drops);
+
+        return Results.NoContent();
     }
 
     /// <summary>
@@ -132,16 +170,18 @@ public static class PriceEndpoints
             _ => $"{json},",
         };
 
-    private static PriceTick NextTick(
-        Dictionary<string, decimal> prices,
-        long sequence)
+    private static PriceTick NextTick(long sequence)
     {
         var symbol = Symbols[RandomNumberGenerator.GetInt32(Symbols.Length)];
         var change = (RandomNumberGenerator.GetInt32(201) - 100) / 100m;
-        var price = Math.Max(1m, prices[symbol] + change);
-        prices[symbol] = price;
 
-        return new PriceTick(symbol, price, change, sequence);
+        lock (PricesLock)
+        {
+            var price = Math.Max(1m, Prices[symbol] + change);
+            Prices[symbol] = price;
+
+            return new PriceTick(symbol, price, change, sequence);
+        }
     }
 
     private static async Task WriteAsync(

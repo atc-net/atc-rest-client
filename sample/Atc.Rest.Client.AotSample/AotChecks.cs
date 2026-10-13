@@ -53,6 +53,8 @@ public sealed class AotChecks
             ("Streamed response is built as a result class", CheckStreamResultFactoryAsync),
             ("A stream record past the limit throws InvalidDataException", CheckStreamRecordLimitAsync),
             ("Response headers are found in any casing", CheckResponseHeaderCasingAsync),
+            ("A default error response is typed, or without a type", CheckDefaultErrorResponseAsync),
+            ("Server-sent events hand out the id, the name and the retry time", CheckServerSentEventInfoAsync),
         };
 
         var failures = 0;
@@ -407,6 +409,59 @@ public sealed class AotChecks
         }
 
         throw new InvalidOperationException("expected InvalidDataException, but the record was read");
+    }
+
+    private async Task CheckDefaultErrorResponseAsync()
+    {
+        using var typedResponse = CreateResponse(HttpStatusCode.BadGateway, "application/json", OrderJson);
+        var typed = await messageFactory
+            .FromResponse(typedResponse)
+            .AddDefaultErrorResponse<Order>()
+            .BuildResponseAsync(x => x, CancellationToken.None)
+            .ConfigureAwait(false);
+
+        Expect((typed.ContentObject as Order)?.Title, "Desk");
+
+        // Without a type nothing is deserialized: the body - XML, say - stays text
+        using var untypedResponse = CreateResponse(HttpStatusCode.BadGateway, "application/xml", "<order/>");
+        var untyped = await messageFactory
+            .FromResponse(untypedResponse)
+            .AddDefaultErrorResponse()
+            .BuildResponseAsync(x => x, CancellationToken.None)
+            .ConfigureAwait(false);
+
+        Expect(untyped.IsSuccess, expected: false);
+        Expect(untyped.Content, "<order/>");
+        Expect(untyped.ContentObject, expected: null);
+    }
+
+    private async Task CheckServerSentEventInfoAsync()
+    {
+        var events = new List<ServerSentEventInfo>();
+        using var response = CreateResponse(
+            HttpStatusCode.OK,
+            "text/event-stream",
+            $"retry: 1500\nid: 1\ndata: {OrderJson}\n\nevent: ping\nid: 2\ndata: ping\n\nevent: order\ndata: {OrderJson}\n\n");
+        using var result = await messageFactory
+            .FromResponse(response)
+            .BuildStreamingEndpointResponseAsync<Order, OrderStreamResult>(
+                x => new OrderStreamResult(x),
+                StreamFraming.ServerSentEvents,
+                new StreamReadOptions { ItemEventNames = ["order"], OnEvent = events.Add })
+            .ConfigureAwait(false);
+
+        var ids = new List<string?>();
+        await foreach (var order in result.Content!.ConfigureAwait(false))
+        {
+            Expect(order?.Title, "Desk");
+            ids.Add(result.LastEventId);
+        }
+
+        // The heartbeat is no item, but its id counts
+        Expect(string.Join(",", ids), "1,2");
+        Expect(events.Count, 2);
+        Expect(events[0], new ServerSentEventInfo { LastEventId = "1", Retry = TimeSpan.FromMilliseconds(1500) });
+        Expect(events[1], new ServerSentEventInfo { LastEventId = "2", EventName = "order", Retry = TimeSpan.FromMilliseconds(1500) });
     }
 
     private async Task CheckResponseHeaderCasingAsync()

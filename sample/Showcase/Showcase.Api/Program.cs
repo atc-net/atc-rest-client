@@ -26,6 +26,7 @@ app.UseStaticFiles();
 
 app.MapGet("/health", () => "Healthy");
 app.MapGet("/api/prices", PriceEndpoints.StreamAsync);
+app.MapPost("/api/prices/drop", PriceEndpoints.Drop);
 app.MapGet("/api/prices/unavailable", PriceEndpoints.UnavailableAsync);
 app.MapGet("/api/prices/huge", PriceEndpoints.HugeAsync);
 

@@ -22,18 +22,52 @@ public sealed class PriceStreamClient
     /// The price stream, in the framing asked for. It goes on until the result is disposed.
     /// </summary>
     /// <param name="framing">How the server is to frame the items, and so how they are read.</param>
+    /// <param name="lastEventId">
+    /// The id of the last server-sent event of an earlier response, to continue after it; <see langword="null"/>
+    /// or empty to start anew.
+    /// </param>
+    /// <param name="onEvent">Called for every server-sent event that is an item, before it is yielded.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The result, which the caller disposes.</returns>
     public Task<PriceStreamResult> StreamAsync(
         StreamFraming framing,
+        string? lastEventId,
+        Action<ServerSentEventInfo>? onEvent,
         CancellationToken cancellationToken)
-        => SendAsync(
-            messageFactory
-                .FromTemplate("/api/prices")
-                .WithQueryParameter("framing", framing.ToString()),
+    {
+        var requestBuilder = messageFactory
+            .FromTemplate("/api/prices")
+            .WithQueryParameter("framing", framing.ToString());
+
+        if (!string.IsNullOrEmpty(lastEventId))
+        {
+            // An ordinary request header: the server continues after this event
+            requestBuilder.WithHeaderParameter("Last-Event-ID", lastEventId);
+        }
+
+        return SendAsync(
+            requestBuilder,
             framing,
-            options: null,
+            new StreamReadOptions { OnEvent = onEvent },
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Asks the server to cut the connection of the price streams that are open, as a network that fails would.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task that completes when the server has answered.</returns>
+    public async Task DropConnectionsAsync(CancellationToken cancellationToken)
+    {
+        using var request = messageFactory
+            .FromTemplate("/api/prices/drop")
+            .Build(HttpMethod.Post);
+
+        var client = httpClientFactory.CreateClient(HttpClientName);
+        using var response = await client
+            .SendAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     /// <summary>
     /// A call that fails with 503, a problem body and a Retry-After header.

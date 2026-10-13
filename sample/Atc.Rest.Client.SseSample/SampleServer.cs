@@ -44,18 +44,38 @@ public sealed class SampleServer : IAsyncDisposable
     /// <summary>
     /// A price every 300 ms. With <c>noise=true</c> the stream also carries what a real one does besides the
     /// items: a comment as keep-alive and a named heartbeat event.
+    /// Every event has an id, and a client that sends the last one it saw as <c>Last-Event-ID</c> is continued
+    /// after it. With <c>dropAfter</c> the connection is cut after that many events - once, not for a client
+    /// that comes back.
     /// </summary>
     private static async Task WritePricesAsync(HttpContext context)
     {
         var count = int.Parse(context.Request.Query["count"].ToString(), CultureInfo.InvariantCulture);
         var noise = bool.Parse(context.Request.Query["noise"].ToString());
+        var isResumed = int.TryParse(context.Request.Headers["Last-Event-ID"], NumberStyles.None, CultureInfo.InvariantCulture, out var lastEventId);
+        var dropAfter = !isResumed && int.TryParse(context.Request.Query["dropAfter"], NumberStyles.None, CultureInfo.InvariantCulture, out var events)
+            ? events
+            : int.MaxValue;
 
         context.Response.ContentType = "text/event-stream";
 
         try
         {
-            for (var sequence = 1; sequence <= count; sequence++)
+            if (dropAfter != int.MaxValue)
             {
+                // How long a client is to wait before it connects again, in milliseconds
+                await WriteAsync(context, "retry: 500\n\n").ConfigureAwait(false);
+            }
+
+            for (var sequence = lastEventId + 1; sequence <= count; sequence++)
+            {
+                if (sequence > dropAfter)
+                {
+                    // The connection is lost: no end of the response is written
+                    context.Abort();
+                    return;
+                }
+
                 if (noise)
                 {
                     await WriteAsync(context, ": keep-alive\n\n").ConfigureAwait(false);
