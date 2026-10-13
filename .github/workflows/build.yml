@@ -60,6 +60,9 @@ jobs:
       - name: 🧪 Run unit tests
         run: dotnet test -c Release --no-build -- --filter-query "/[category!=integration]"
 
+      - name: 🧪 Run unit tests against the netstandard2.0 build of the library
+        run: dotnet test -c Release -p:LibraryTargetFramework=netstandard2.0 -- --filter-query "/[category!=integration]"
+
   dotnet-aot:
     runs-on: ubuntu-latest
     needs:
