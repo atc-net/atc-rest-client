@@ -22,6 +22,24 @@ public interface IMessageResponseBuilder
         HttpStatusCode statusCode);
 
     /// <summary>
+    /// Registers a status code as a success response with typed content deserialization, for responses of the
+    /// given media type only.
+    /// </summary>
+    /// <remarks>
+    /// Use this when one status code has two bodies that are told apart by their media type. The registration for a
+    /// media type wins over the registration without one for the same status code. The media type is compared
+    /// without its parameters (such as <c>charset</c>) and without regard to casing.
+    /// Whether a status code is a success or an error is decided per status code, by its latest registration.
+    /// </remarks>
+    /// <typeparam name="TResponseContent">The type to deserialize the response content to.</typeparam>
+    /// <param name="statusCode">The HTTP status code to treat as success.</param>
+    /// <param name="mediaType">The media type of the response this registration is for, e.g. <c>application/json</c>.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddSuccessResponse<TResponseContent>(
+        HttpStatusCode statusCode,
+        string mediaType);
+
+    /// <summary>
     /// Registers a status code as an error response without deserialization.
     /// </summary>
     /// <param name="statusCode">The HTTP status code to treat as error.</param>
@@ -36,6 +54,26 @@ public interface IMessageResponseBuilder
     /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder AddErrorResponse<TResponseContent>(
         HttpStatusCode statusCode);
+
+    /// <summary>
+    /// Registers a status code as an error response with typed content deserialization, for responses of the given
+    /// media type only.
+    /// </summary>
+    /// <remarks>
+    /// Use this when one status code has two bodies that are told apart by their media type - a <c>404</c> with
+    /// the model of the API as <c>application/json</c> and the problem details of the framework as
+    /// <c>application/problem+json</c>. The registration for a media type wins over the registration without one for
+    /// the same status code. The media type is compared without its parameters (such as <c>charset</c>) and without
+    /// regard to casing.
+    /// Whether a status code is a success or an error is decided per status code, by its latest registration.
+    /// </remarks>
+    /// <typeparam name="TResponseContent">The type to deserialize the error content to.</typeparam>
+    /// <param name="statusCode">The HTTP status code to treat as error.</param>
+    /// <param name="mediaType">The media type of the response this registration is for, e.g. <c>application/problem+json</c>.</param>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddErrorResponse<TResponseContent>(
+        HttpStatusCode statusCode,
+        string mediaType);
 
     /// <summary>
     /// Registers a status code as a success response whose body is plain text.
@@ -68,6 +106,37 @@ public interface IMessageResponseBuilder
     /// <param name="statusCode">The HTTP status code to treat as error.</param>
     /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
     IMessageResponseBuilder AddErrorTextResponse(HttpStatusCode statusCode);
+
+    /// <summary>
+    /// Registers the type that the body of every error response without a registration of its own is deserialized
+    /// to - the <c>default</c> response of an OpenAPI operation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The type registered for a response is looked up in this order: the status code and the media type of the
+    /// response, the status code, and - for an error response only - this default.
+    /// </para>
+    /// <para>
+    /// It applies to every status that is not a success and has no registration, on every way a response is built.
+    /// A status registered without a type (<see cref="AddErrorResponse(HttpStatusCode)"/>) has a registration of
+    /// its own, and a success status is never read as the default. As for a registered status, an error body that
+    /// cannot be deserialized to the type does not throw.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TResponseContent">The type to deserialize the error content to.</typeparam>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddDefaultErrorResponse<TResponseContent>();
+
+    /// <summary>
+    /// Registers that the body of every error response without a registration of its own is plain text, returned
+    /// verbatim as a <see cref="string"/>.
+    /// </summary>
+    /// <remarks>
+    /// The lookup is as for <see cref="AddDefaultErrorResponse{TResponseContent}"/>. An empty or whitespace-only body
+    /// yields <see langword="null"/>, as for <see cref="AddErrorTextResponse(HttpStatusCode)"/>.
+    /// </remarks>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddDefaultErrorTextResponse();
 
     /// <summary>
     /// Builds the response using a custom factory function.
