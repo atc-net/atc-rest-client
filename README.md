@@ -40,6 +40,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
       - [Plain Text Responses](#plain-text-responses)
+      - [The Default Response and Responses per Media Type](#the-default-response-and-responses-per-media-type)
       - [Error Response Deserialization Resilience](#error-response-deserialization-resilience)
       - [Error Bodies with Non-Text Media Types](#error-bodies-with-non-text-media-types)
       - [The Limit on an Error Body](#the-limit-on-an-error-body)
@@ -1042,6 +1043,48 @@ else
 >
 > An empty or whitespace-only body yields a `null` `ContentObject`, matching the behavior of `AddSuccessResponse<T>`. Character encoding follows the `Content-Type` charset.
 
+#### The Default Response and Responses per Media Type
+
+A body type is registered per status code. An API declares two things beyond that, and both have a registration of
+their own, so no `if` on the response is needed before the builder is set up.
+
+**The `default` response** - "any status that is not listed":
+
+```csharp
+var result = await messageFactory
+    .FromResponse(response)
+    .AddSuccessResponse<Order>(HttpStatusCode.OK)
+    .AddErrorResponse<ValidationError>(HttpStatusCode.BadRequest)
+    .AddDefaultErrorResponse<ProblemDetails>()   // every other error status
+    .BuildResponseAsync(x => new GetOrderResult(x), cancellationToken);
+```
+
+Use `AddDefaultErrorTextResponse()` when the default body is plain text.
+
+**Two bodies for one status, told apart by media type** - a `404` with the model of the API as `application/json`,
+and the problem details of the framework as `application/problem+json`:
+
+```csharp
+responseBuilder
+    .AddErrorResponse<NotFoundError>(HttpStatusCode.NotFound)
+    .AddErrorResponse<ProblemDetails>(HttpStatusCode.NotFound, "application/problem+json");
+```
+
+`AddSuccessResponse<T>(statusCode, mediaType)` does the same for a success status.
+
+The type for a response is looked up in this order:
+
+1. the registration for its **status code and media type**
+2. the registration for its **status code**
+3. the **default** - for an error response only
+
+- The media type is compared without its parameters (`; charset=utf-8`) and without regard to casing.
+- The default never applies to a success status, nor to a status with a registration of its own - also one
+  registered without a type (`AddErrorResponse(statusCode)`).
+- Whether a status is a success or an error is decided per status code, by its latest registration.
+- It works the same on every way a response is built: plain, binary, stream-binary and streaming.
+- As for any registered error type, a body that cannot be deserialized to it does not throw.
+
 #### Error Response Deserialization Resilience
 
 When an error response (4xx/5xx) cannot be deserialized to the registered type (e.g., a server returns plain text instead of `ProblemDetails` JSON), the builder falls back to the raw string content instead of throwing. This allows generated result classes to handle the conversion gracefully:
@@ -1255,6 +1298,14 @@ public interface IMessageResponseBuilder
     IMessageResponseBuilder AddSuccessResponse<TResponseContent>(HttpStatusCode statusCode);
     IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode);
     IMessageResponseBuilder AddErrorResponse<TResponseContent>(HttpStatusCode statusCode);
+
+    // 🎯 One status, two bodies: a registration per media type wins over the one per status
+    IMessageResponseBuilder AddSuccessResponse<TResponseContent>(HttpStatusCode statusCode, string mediaType);
+    IMessageResponseBuilder AddErrorResponse<TResponseContent>(HttpStatusCode statusCode, string mediaType);
+
+    // 🧺 The "default" response: every error status without a registration of its own
+    IMessageResponseBuilder AddDefaultErrorResponse<TResponseContent>();
+    IMessageResponseBuilder AddDefaultErrorTextResponse();
 
     // 📝 Plain text response support (text/*, bypasses serializer)
     IMessageResponseBuilder AddSuccessTextResponse(HttpStatusCode statusCode);
