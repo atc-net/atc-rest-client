@@ -6,6 +6,7 @@ namespace Atc.Rest.Client;
 /// <typeparam name="T">The type of items in the stream.</typeparam>
 public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>
 {
+    private readonly ServerSentEventState? eventState;
     private HttpResponseMessage? httpResponse;
     private bool disposed;
 
@@ -52,6 +53,27 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>
         HttpResponseMessage? httpResponse,
         object? errorContentObject,
         IReadOnlyDictionary<string, IEnumerable<string>> headers)
+        : this(
+            isSuccess,
+            statusCode,
+            content,
+            errorContent,
+            httpResponse,
+            errorContentObject,
+            headers,
+            eventState: null)
+    {
+    }
+
+    internal StreamingEndpointResponse(
+        bool isSuccess,
+        HttpStatusCode statusCode,
+        IAsyncEnumerable<T?>? content,
+        string? errorContent,
+        HttpResponseMessage? httpResponse,
+        object? errorContentObject,
+        IReadOnlyDictionary<string, IEnumerable<string>> headers,
+        ServerSentEventState? eventState)
     {
         IsSuccess = isSuccess;
         StatusCode = statusCode;
@@ -60,6 +82,7 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>
         ErrorContentObject = errorContentObject;
         Headers = headers ?? new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase);
         this.httpResponse = httpResponse;
+        this.eventState = eventState;
     }
 
     /// <summary>
@@ -86,6 +109,7 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>
         ErrorContentObject = response.ErrorContentObject;
         Headers = response.Headers;
         httpResponse = response.httpResponse;
+        eventState = response.eventState;
         disposed = response.disposed;
         response.httpResponse = null;
     }
@@ -125,6 +149,18 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>
     /// regard to casing.
     /// </summary>
     public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
+
+    /// <summary>
+    /// Gets the id of the last server-sent event read so far - what to send as the <c>Last-Event-ID</c> request
+    /// header to continue the stream after it.
+    /// </summary>
+    /// <remarks>
+    /// It follows the enumeration of <see cref="Content"/>: while an item is handled, it is the id that was current
+    /// when that item was yielded, and it is also set by an event that is no item (a heartbeat with an id).
+    /// <see langword="null"/> when no event with an id has been read and for a stream that is not server-sent
+    /// events; empty when the server has reset the id, in which case no header is to be sent.
+    /// </remarks>
+    public string? LastEventId => eventState?.LastEventId;
 
     /// <summary>
     /// Disposes the underlying HTTP response.

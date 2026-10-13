@@ -36,6 +36,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
       - [Rules of the Readers](#rules-of-the-readers)
       - [The Limit on One Record](#the-limit-on-one-record)
     - [📡 Server-Sent Events](#-server-sent-events)
+      - [Resuming an Event Stream](#resuming-an-event-stream)
     - [📋 Handling Responses](#-handling-responses)
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
@@ -808,8 +809,9 @@ And per format:
   server that fails after a record never sends one. A record may be pretty-printed (line feeds inside it). What is
   left at the end of the stream without a line feed is read as a record too, so a record that was cut off throws the
   serializer's exception.
-- **Server-sent events**: comments, `id:` and `retry:` are read past, and several `data:` lines of an event are joined
-  with a line feed. An event without data is no item. The unnamed event (or one named `message`) is the item event and
+- **Server-sent events**: comments are read past, and several `data:` lines of an event are joined with a line feed.
+  `id:` and `retry:` are no part of an item; they are kept as the last id and the retry time of the stream, see
+  [Resuming an Event Stream](#resuming-an-event-stream). An event without data is no item. The unnamed event (or one named `message`) is the item event and
   must be an item. An event with any other name - a heartbeat, a control frame - is read past without being
   deserialized, unless its name is listed in `StreamReadOptions.ItemEventNames`.
 - **Multipart**: the boundary comes from the `Content-Type` (quoted or not); a response without one throws an
@@ -902,7 +904,8 @@ What you get:
 
 - **Live items.** An item is yielded at the blank line that ends its event.
 - **Only the items.** The item event is the unnamed one (which the standard also calls `message`). Comments
-  (keep-alives), `id:` and `retry:` are read past, an event without data is no item, and an event with any other
+  (keep-alives) are read past, `id:` and `retry:` are kept beside the items (see
+  [Resuming an Event Stream](#resuming-an-event-stream)), an event without data is no item, and an event with any other
   name - a heartbeat such as `event: ping`, a closing `event: done` - is read past without being deserialized, even
   when its data is JSON. An item event must be an item: data that is not JSON for `T` throws the serializer's
   exception from the enumeration.
@@ -964,8 +967,85 @@ dotnet run --project sample/Atc.Rest.Client.SseSample
    retry-after:        30 s
 ```
 
-> ⚠️ **Not supported yet:** reconnecting a stream that ended (`Last-Event-ID`, `retry:`), and handing the event name
-> or id - or the events that are no items - to the caller.
+#### Resuming an Event Stream
+
+An event may carry an `id:`, and a client that connects again sends the last id it saw as the `Last-Event-ID` request
+header, so the server continues after it. The response has that id while the stream is read:
+
+```csharp
+string? lastEventId = null;
+
+while (!cancellationToken.IsCancellationRequested)
+{
+    var requestBuilder = messageFactory.FromTemplate("/prices");
+    requestBuilder.WithHttpCompletionOption(HttpCompletionOption.ResponseHeadersRead);
+    if (!string.IsNullOrEmpty(lastEventId))
+    {
+        requestBuilder.WithHeaderParameter("Last-Event-ID", lastEventId);
+    }
+
+    try
+    {
+        using var request = requestBuilder.Build(HttpMethod.Get);
+        var httpResponse = await client.SendAsync(request, requestBuilder.HttpCompletionOption, cancellationToken);
+
+        using var response = await messageFactory
+            .FromResponse(httpResponse)
+            .BuildStreamingEndpointResponseAsync<PriceTick>(StreamFraming.ServerSentEvents, cancellationToken);
+
+        if (!response.IsSuccess)
+        {
+            break;
+        }
+
+        await foreach (var tick in response.Content!)
+        {
+            Handle(tick);
+
+            // Where to continue, should the connection be lost after this item
+            lastEventId = response.LastEventId ?? lastEventId;
+        }
+
+        break; // The server ended the stream
+    }
+    catch (Exception ex) when (ex is IOException or HttpRequestException)
+    {
+        // The connection was lost, or the server is not back yet: wait and continue after the last item handled
+        await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+    }
+}
+```
+
+The library makes a resume possible; it does not reconnect by itself. When to connect again, how often, and whether
+the request is safe to send twice are the application's decisions - a stream that reconnected silently would hide
+failures the caller has to see.
+
+- **`LastEventId`** is the id of the last event read so far. It stays until the server sends another, and an event
+  that is no item - a heartbeat with an `id:` - sets it as well. It is `null` until an id has been read (and for the
+  other stream formats), and empty when the server has reset it with an `id:` without a value. An id is taken at the
+  blank line that ends its event, so an event that was cut off does not count.
+- **The event name and the retry time** come with `StreamReadOptions.OnEvent`, which is called for every event that
+  is yielded as an item, before it is yielded:
+
+  ```csharp
+  var retry = TimeSpan.FromSeconds(3);
+
+  await responseBuilder.BuildStreamingEndpointResponseAsync<Order>(
+      StreamFraming.ServerSentEvents,
+      new StreamReadOptions
+      {
+          ItemEventNames = ["order"],
+          OnEvent = x => retry = x.Retry ?? retry, // also x.EventName and x.LastEventId
+      },
+      cancellationToken);
+  ```
+
+  `EventName` is `null` for the unnamed event. `Retry` is the time the server last asked a client to wait before it
+  connects again (`retry:` in milliseconds; a value that is not all digits, or is more than `int.MaxValue`, is ignored). An exception thrown by
+  `OnEvent` fails the enumeration with that exception.
+
+> ⚠️ **Not supported yet:** handing the events that are no items - a heartbeat, a control frame such as
+> `event: error` - to the caller.
 
 ### 📋 Handling Responses
 
@@ -1309,6 +1389,7 @@ public interface IMessageResponseBuilder
 
     // 🧺 The "default" response: every error status without a registration of its own
     IMessageResponseBuilder AddDefaultErrorResponse<TResponseContent>();
+    IMessageResponseBuilder AddDefaultErrorResponse();
     IMessageResponseBuilder AddDefaultErrorTextResponse();
 
     // 📝 Plain text response support (text/*, bypasses serializer)
@@ -1389,7 +1470,6 @@ All response types support both properties:
 | Type                                 | `IsSuccess` |
 |--------------------------------------|-------------|
 | `EndpointResponse`                   | ✅          |
-    IMessageResponseBuilder AddDefaultErrorResponse();
 | `EndpointResponse<TSuccess>`         | ✅          |
 | `EndpointResponse<TSuccess, TError>` | ✅          |
 | `BinaryEndpointResponse`             | ✅          |
@@ -1501,6 +1581,8 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>, IDisp
     public object? ErrorContentObject { get; }  // ❌ The error deserialized to the type registered for the status code
 
     public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }  // Never null
+
+    public string? LastEventId { get; }  // 📡 Server-sent events: the id to send as Last-Event-ID to resume
 
     public void Dispose();  // 🧹 Disposes the underlying HttpResponseMessage
 

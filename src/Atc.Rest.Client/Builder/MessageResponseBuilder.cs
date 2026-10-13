@@ -330,7 +330,12 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                     GetHeaders(response));
             }
 
-            var content = await ReadStreamContentAsync<T>(response, framing, maxRecordLength, options?.ItemEventNames, cancellationToken).ConfigureAwait(false);
+            // What the reader of an event stream has seen is shared with the response, which hands out the last id
+            var eventState = framing == StreamFraming.ServerSentEvents
+                ? new ServerSentEventState()
+                : null;
+
+            var content = await ReadStreamContentAsync<T>(response, framing, maxRecordLength, options, eventState, cancellationToken).ConfigureAwait(false);
 
             return new StreamingEndpointResponse<T>(
                 isSuccess: true,
@@ -339,7 +344,8 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
                 errorContent: null,
                 httpResponse: response,
                 errorContentObject: null,
-                GetHeaders(response));
+                GetHeaders(response),
+                eventState);
         }
         catch
         {
@@ -390,7 +396,8 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpResponseMessage responseMessage,
         StreamFraming framing,
         int maxRecordLength,
-        IReadOnlyCollection<string>? itemEventNames,
+        StreamReadOptions? options,
+        ServerSentEventState? eventState,
         CancellationToken cancellationToken)
     {
         var boundary = framing == StreamFraming.MultipartMixed
@@ -406,7 +413,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         {
             StreamFraming.JsonLines => StreamRecordReaders.ReadJsonLinesAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
             StreamFraming.JsonSequence => StreamRecordReaders.ReadJsonSequenceAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
-            StreamFraming.ServerSentEvents => StreamRecordReaders.ReadServerSentEventsAsync<T>(stream, serializer, maxRecordLength, itemEventNames, cancellationToken),
+            StreamFraming.ServerSentEvents => StreamRecordReaders.ReadServerSentEventsAsync<T>(stream, serializer, maxRecordLength, options?.ItemEventNames, options?.OnEvent, eventState ?? new ServerSentEventState(), cancellationToken),
             StreamFraming.MultipartMixed => StreamRecordReaders.ReadMultipartMixedAsync<T>(stream, boundary, serializer, maxRecordLength, cancellationToken),
             _ => StreamRecordReaders.ReadJsonArrayAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
         };
