@@ -44,6 +44,15 @@ public sealed class AotChecks
             ("Repeated multipart form fields are all sent", CheckRepeatedFormFieldsAsync),
             ("URL-encoded form body", CheckUrlEncodedFormAsync),
             ("Empty URL-encoded form is still sent as a form", CheckEmptyUrlEncodedFormAsync),
+            ("Stream of a JSON array", () => CheckStreamAsync(StreamFraming.JsonArray, "application/json", $"[{OrderJson},{OrderJson}]")),
+            ("Stream of JSON Lines", () => CheckStreamAsync(StreamFraming.JsonLines, "application/jsonl", $"{OrderJson}\n{OrderJson}\n")),
+            ("Stream of a JSON text sequence", () => CheckStreamAsync(StreamFraming.JsonSequence, "application/json-seq", $"\u001e{OrderJson}\n\u001e{OrderJson}\n")),
+            ("Stream of server-sent events", () => CheckStreamAsync(StreamFraming.ServerSentEvents, "text/event-stream", $": keep-alive\n\ndata: {OrderJson}\n\nevent: ping\ndata: ping\n\ndata: {OrderJson}\n\n")),
+            ("Stream of multipart/mixed", () => CheckStreamAsync(StreamFraming.MultipartMixed, "multipart/mixed; boundary=b", $"--b\r\nContent-Type: application/json\r\n\r\n{OrderJson}\r\n--b\r\n\r\n{OrderJson}\r\n--b--\r\n")),
+            ("Streamed response has the typed error and the headers", CheckStreamErrorAsync),
+            ("Streamed response is built as a result class", CheckStreamResultFactoryAsync),
+            ("A stream record past the limit throws InvalidDataException", CheckStreamRecordLimitAsync),
+            ("Response headers are found in any casing", CheckResponseHeaderCasingAsync),
         };
 
         var failures = 0;
@@ -309,5 +318,108 @@ public sealed class AotChecks
 
         Expect(request.Content.Headers.ContentType!.MediaType, "application/x-www-form-urlencoded");
         Expect(body, string.Empty);
+    }
+
+    private static HttpResponseMessage CreateResponse(
+        HttpStatusCode statusCode,
+        string contentType,
+        string body)
+    {
+        var response = new HttpResponseMessage(statusCode)
+        {
+            Content = new ByteArrayContent(Encoding.UTF8.GetBytes(body)),
+        };
+        response.Content.Headers.TryAddWithoutValidation("Content-Type", contentType);
+        response.Headers.TryAddWithoutValidation("x-rate-limit", "5");
+        return response;
+    }
+
+    private async Task CheckStreamAsync(
+        StreamFraming framing,
+        string contentType,
+        string body)
+    {
+        using var response = CreateResponse(HttpStatusCode.OK, contentType, body);
+        using var result = await messageFactory
+            .FromResponse(response)
+            .BuildStreamingEndpointResponseAsync<Order>(framing)
+            .ConfigureAwait(false);
+
+        Expect(result.IsSuccess, expected: true);
+
+        var count = 0;
+        await foreach (var order in result.Content!.ConfigureAwait(false))
+        {
+            Expect(order?.Status, OrderStatus.Shipped);
+            count++;
+        }
+
+        Expect(count, 2);
+    }
+
+    private async Task CheckStreamErrorAsync()
+    {
+        using var response = CreateResponse(HttpStatusCode.NotFound, "application/json", OrderJson);
+        using var result = await messageFactory
+            .FromResponse(response)
+            .AddErrorResponse<Order>(HttpStatusCode.NotFound)
+            .BuildStreamingEndpointResponseAsync<Order>(StreamFraming.JsonLines)
+            .ConfigureAwait(false);
+
+        Expect(result.IsSuccess, expected: false);
+        Expect(result.ErrorContent, OrderJson);
+        Expect((result.ErrorContentObject as Order)?.Title, "Desk");
+        Expect(string.Join(",", result.Headers["X-Rate-Limit"]), "5");
+    }
+
+    private async Task CheckStreamResultFactoryAsync()
+    {
+        using var response = CreateResponse(HttpStatusCode.NotFound, "application/json", OrderJson);
+        using var result = await messageFactory
+            .FromResponse(response)
+            .AddErrorResponse<Order>(HttpStatusCode.NotFound)
+            .BuildStreamingEndpointResponseAsync<Order, OrderStreamResult>(x => new OrderStreamResult(x), StreamFraming.ServerSentEvents)
+            .ConfigureAwait(false);
+
+        Expect(result.IsNotFound, expected: true);
+        Expect(result.NotFoundContent.Title, "Desk");
+    }
+
+    private async Task CheckStreamRecordLimitAsync()
+    {
+        using var response = CreateResponse(HttpStatusCode.OK, "application/jsonl", $"{OrderJson}\n");
+        using var result = await messageFactory
+            .FromResponse(response)
+            .BuildStreamingEndpointResponseAsync<Order>(StreamFraming.JsonLines, new StreamReadOptions { MaxRecordLength = 16 })
+            .ConfigureAwait(false);
+
+        try
+        {
+            await foreach (var order in result.Content!.ConfigureAwait(false))
+            {
+                Expect(order?.Title, "Desk");
+            }
+        }
+        catch (InvalidDataException ex)
+        {
+            ExpectContains(ex.Message, "16 bytes");
+            return;
+        }
+
+        throw new InvalidOperationException("expected InvalidDataException, but the record was read");
+    }
+
+    private async Task CheckResponseHeaderCasingAsync()
+    {
+        using var response = CreateResponse(HttpStatusCode.OK, "application/json", OrderJson);
+
+        var result = await messageFactory
+            .FromResponse(response)
+            .AddSuccessResponse<Order>(HttpStatusCode.OK)
+            .BuildResponseAsync<Order>(CancellationToken.None)
+            .ConfigureAwait(false);
+
+        Expect(string.Join(",", result.Headers["X-RATE-LIMIT"]), "5");
+        Expect(result.Headers.ContainsKey("content-type"), expected: true);
     }
 }

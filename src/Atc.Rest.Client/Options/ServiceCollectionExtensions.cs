@@ -15,9 +15,10 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddAtcRestClientCore(
             IContractSerializer? contractSerializer = null)
         {
+            services.AddOptions();
+
             if (contractSerializer is null)
             {
-                services.AddOptions();
                 services.TryAddSingleton(CreateDefaultContractSerializer);
             }
             else
@@ -83,6 +84,11 @@ public static class ServiceCollectionExtensions
             IContractSerializer? contractSerializer = null)
             where TOptions : AtcRestClientOptions, new()
         {
+            if (options is null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             var clientBuilder = services.AddHttpClient(clientName, (_, c) =>
             {
                 c.BaseAddress = options.BaseAddress;
@@ -90,6 +96,14 @@ public static class ServiceCollectionExtensions
             });
 
             httpClientBuilder?.Invoke(clientBuilder);
+
+            // The message factory is shared by all clients, so the limit is one per service collection.
+            // A client that leaves it at the default does not reset the limit another client has set.
+            var maxStreamRecordLength = options.MaxStreamRecordLength;
+            if (maxStreamRecordLength != AtcRestClientOptions.DefaultMaxStreamRecordLength)
+            {
+                services.Configure<AtcRestClientOptions>(o => o.MaxStreamRecordLength = maxStreamRecordLength);
+            }
 
             return services.AddAtcRestClientCore(contractSerializer);
         }

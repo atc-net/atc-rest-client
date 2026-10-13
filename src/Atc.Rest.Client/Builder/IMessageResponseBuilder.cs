@@ -143,7 +143,7 @@ public interface IMessageResponseBuilder
     /// enumeration completes. If the response is disposed prematurely, the enumeration will fail.
     /// </para>
     /// <para>
-    /// For most use cases, prefer <see cref="BuildStreamingEndpointResponseAsync{T}"/> which automatically
+    /// For most use cases, prefer <see cref="BuildStreamingEndpointResponseAsync{T}(CancellationToken)"/> which automatically
     /// manages the HTTP response lifecycle and provides additional response metadata (status code, error content).
     /// </para>
     /// <para>
@@ -219,6 +219,91 @@ public interface IMessageResponseBuilder
     /// <returns>The result created by the factory function.</returns>
     Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
         Func<StreamingEndpointResponse<T>, TResult> factory,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>;
+
+    /// <summary>
+    /// Builds a streaming endpoint response whose items are framed as given: a JSON array, JSON Lines, a JSON text
+    /// sequence, server-sent events or multipart/mixed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The caller names the framing, as the API specification does. It is not guessed from the Content-Type of the
+    /// response, which an error page or a proxy can change. For <see cref="StreamFraming.MultipartMixed"/> the
+    /// boundary is read from the Content-Type; a response without one is an <see cref="InvalidDataException"/>.
+    /// </para>
+    /// <para>
+    /// An item is yielded as soon as its record is complete; nothing is read ahead of it. A record that is no JSON
+    /// for <typeparamref name="T"/> throws the serializer's exception from the enumeration, and a record longer than
+    /// <c>AtcRestClientOptions.MaxStreamRecordLength</c> throws an <see cref="InvalidDataException"/> from it.
+    /// </para>
+    /// <para>
+    /// Errors, typed error content and headers are as for
+    /// <see cref="BuildStreamingEndpointResponseAsync{T}(CancellationToken)"/>. If the response cannot be built, the
+    /// HTTP response is disposed before the exception leaves this method.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="T">The type of items to deserialize from the stream.</typeparam>
+    /// <param name="framing">How the items are framed on the wire.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A <see cref="StreamingEndpointResponse{T}"/> containing the streaming content and response metadata.</returns>
+    Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        StreamFraming framing,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds a streaming endpoint response whose items are framed as given, with options for this one response.
+    /// </summary>
+    /// <remarks>
+    /// As <see cref="BuildStreamingEndpointResponseAsync{T}(StreamFraming, CancellationToken)"/>;
+    /// <see cref="StreamReadOptions.MaxRecordLength"/> replaces <c>AtcRestClientOptions.MaxStreamRecordLength</c>
+    /// when it is set.
+    /// </remarks>
+    /// <typeparam name="T">The type of items to deserialize from the stream.</typeparam>
+    /// <param name="framing">How the items are framed on the wire.</param>
+    /// <param name="options">Options for reading this response, or <see langword="null"/> for the defaults.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A <see cref="StreamingEndpointResponse{T}"/> containing the streaming content and response metadata.</returns>
+    Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        StreamFraming framing,
+        StreamReadOptions? options,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds a streaming endpoint response whose items are framed as given, using a custom factory function.
+    /// </summary>
+    /// <remarks>
+    /// The response is built as by <see cref="BuildStreamingEndpointResponseAsync{T}(StreamFraming, CancellationToken)"/>
+    /// and handed to <paramref name="factory"/>, as by
+    /// <see cref="BuildStreamingEndpointResponseAsync{T, TResult}(Func{StreamingEndpointResponse{T}, TResult}, CancellationToken)"/>.
+    /// </remarks>
+    /// <typeparam name="T">The type of items to deserialize from the stream.</typeparam>
+    /// <typeparam name="TResult">The type of result to create.</typeparam>
+    /// <param name="factory">A factory function that creates the result from the streaming endpoint response.</param>
+    /// <param name="framing">How the items are framed on the wire.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result created by the factory function.</returns>
+    Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        StreamFraming framing,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>;
+
+    /// <summary>
+    /// Builds a streaming endpoint response whose items are framed as given, using a custom factory function and
+    /// options for this one response.
+    /// </summary>
+    /// <typeparam name="T">The type of items to deserialize from the stream.</typeparam>
+    /// <typeparam name="TResult">The type of result to create.</typeparam>
+    /// <param name="factory">A factory function that creates the result from the streaming endpoint response.</param>
+    /// <param name="framing">How the items are framed on the wire.</param>
+    /// <param name="options">Options for reading this response, or <see langword="null"/> for the defaults.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result created by the factory function.</returns>
+    Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        StreamFraming framing,
+        StreamReadOptions? options,
         CancellationToken cancellationToken = default)
         where TResult : StreamingEndpointResponse<T>;
 }
