@@ -1,0 +1,153 @@
+@page "/"
+
+<PageTitle>Live streams · Atc.Rest.Client</PageTitle>
+
+<section class="panel" aria-labelledby="live-title">
+    <div class="panel-head">
+        <h2 id="live-title">Live prices</h2>
+        <p>
+            The server writes a price about three times a second and never ends the response. Pick how it frames
+            them; the page reads all five the same way.
+        </p>
+    </div>
+
+    <div class="controls">
+        <label class="field">
+            <span>Framing</span>
+            <select @bind="framing" disabled="@isStreaming">
+                @foreach (var option in Framings)
+                {
+                    <option value="@option">@Describe(option)</option>
+                }
+            </select>
+        </label>
+
+        <button type="button" class="primary" @onclick="StartAsync" disabled="@isStreaming">Start</button>
+        <button type="button" @onclick="Stop" disabled="@(!isStreaming)">Stop</button>
+
+        <p class="status @(isStreaming ? "is-live" : string.Empty)" role="status">
+            <span class="dot" aria-hidden="true"></span>
+            @status
+        </p>
+    </div>
+
+    <div class="tickers">
+        @foreach (var quote in quotes.Values.OrderBy(x => x.Symbol, StringComparer.Ordinal))
+        {
+            <article class="ticker @(quote.Change >= 0 ? "is-up" : "is-down")" @key="quote.Symbol">
+                <h3>@quote.Symbol</h3>
+                <p class="price">@Format(quote.Price)</p>
+                <p class="change">@(quote.Change >= 0 ? "▲" : "▼") @Format(Math.Abs(quote.Change))</p>
+                <p class="ticks">@quote.Ticks ticks</p>
+            </article>
+        }
+
+        @if (quotes.Count == 0)
+        {
+            <p class="empty">Press Start to open the stream.</p>
+        }
+    </div>
+
+    <dl class="facts">
+        <div>
+            <dt>Items</dt>
+            <dd>@itemCount</dd>
+        </div>
+        <div>
+            <dt>Open for</dt>
+            <dd>@Format(elapsedSeconds) s</dd>
+        </div>
+        <div>
+            <dt>Content-Type</dt>
+            <dd>@(contentType ?? "–")</dd>
+        </div>
+    </dl>
+
+    <div class="split">
+        <div>
+            <h3>Arrivals</h3>
+            <p class="hint">Time since the stream opened. The gaps are the server's pace: nothing is held back.</p>
+            <ol class="log" reversed>
+                @foreach (var entry in log)
+                {
+                    <li @key="entry.Tick.Sequence">
+                        <span class="at">+@entry.ElapsedMilliseconds ms</span>
+                        <span>#@entry.Tick.Sequence</span>
+                        <span>@entry.Tick.Symbol</span>
+                        <span class="num">@Format(entry.Tick.Price)</span>
+                    </li>
+                }
+            </ol>
+        </div>
+
+        <div>
+            <h3>The call</h3>
+            <p class="hint">What this page runs for the selected framing.</p>
+            <pre><code>using var result = await messageFactory
+    .FromResponse(response)
+    .BuildStreamingEndpointResponseAsync&lt;PriceTick&gt;(
+        StreamFraming.@framing,
+        cancellationToken);
+
+await foreach (var tick in result.Content!)
+{
+    Show(tick);
+}</code></pre>
+        </div>
+    </div>
+</section>
+
+<section class="panel" aria-labelledby="wrong-title">
+    <div class="panel-head">
+        <h2 id="wrong-title">When it does not go well</h2>
+        <p>A stream can fail before it starts, and a peer can send more than you want to hold in memory.</p>
+    </div>
+
+    <div class="split">
+        <div>
+            <h3>A failed call</h3>
+            <p class="hint">
+                The server answers 503 with a problem body and a Retry-After header. The body is read as the
+                type registered for the status code.
+            </p>
+            <button type="button" @onclick="CallUnavailableAsync" disabled="@isBusy">Call it</button>
+
+            @if (failure is not null)
+            {
+                <dl class="result">
+                    <div>
+                        <dt>StatusCode</dt>
+                        <dd>@failure.StatusCode</dd>
+                    </div>
+                    <div>
+                        <dt>ErrorContentObject</dt>
+                        <dd>@failure.Title – @failure.Detail</dd>
+                    </div>
+                    <div>
+                        <dt>Retry-After</dt>
+                        <dd>@failure.RetryAfter</dd>
+                    </div>
+                </dl>
+            }
+        </div>
+
+        <div>
+            <h3>An event that is too long</h3>
+            <p class="hint">
+                The second event of this stream is 64 KiB. This call accepts 1 KiB per event, so the first item
+                arrives and the second is refused before it is buffered.
+            </p>
+            <button type="button" @onclick="ReadHugeAsync" disabled="@isBusy">Read it</button>
+
+            @if (hugeOutcome.Count > 0)
+            {
+                <ul class="result plain">
+                    @foreach (var line in hugeOutcome)
+                    {
+                        <li>@line</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</section>

@@ -1,0 +1,19 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+
+  <!--
+    The Aspire AppHost of the showcase: runs Showcase.Api (which serves the Blazor app) with the Aspire dashboard,
+    where the streamed requests show up as logs and traces.
+      dotnet run (in this folder)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- The AppHost also runs with "dotnet run", without the Aspire CLI bundle that ASPIRE010 asks for -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);ASPIRE010</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Showcase.Api\Showcase.Api.csproj" />
+  </ItemGroup>
+
+</Project>
