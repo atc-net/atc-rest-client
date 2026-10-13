@@ -13,4 +13,14 @@
     <ProjectReference Include="..\..\src\Atc.Rest.Client\Atc.Rest.Client.csproj" />
   </ItemGroup>
 
+  <!--
+    The tests run on net10.0 and so against the net10.0 build of the library. To run them against its
+    netstandard2.0 build: dotnet test -p:LibraryTargetFramework=netstandard2.0
+    (the package is one that build depends on and the net10.0 build does not).
+  -->
+  <ItemGroup Condition="'$(LibraryTargetFramework)' != ''">
+    <ProjectReference Update="..\..\src\Atc.Rest.Client\Atc.Rest.Client.csproj" SetTargetFramework="TargetFramework=$(LibraryTargetFramework)" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.12" />
+  </ItemGroup>
+
 </Project>
