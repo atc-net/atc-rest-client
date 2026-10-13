@@ -1,0 +1,10 @@
+global using System.Diagnostics;
+global using System.Globalization;
+global using System.Net;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+global using Atc.Rest.Client;
+global using Atc.Rest.Client.Builder;
+global using Atc.Rest.Client.Options;
+global using Atc.Rest.Client.SseSample;
+global using Atc.Rest.Client.SseSample.Contracts;
