@@ -11,6 +11,11 @@ public class AtcRestClientOptions
     public const int DefaultMaxStreamRecordLength = 16 * 1024 * 1024;
 
     /// <summary>
+    /// The default of <see cref="MaxErrorContentLength"/>: 1 MiB.
+    /// </summary>
+    public const int DefaultMaxErrorContentLength = 1024 * 1024;
+
+    /// <summary>
     /// Gets or sets the base address of the HTTP client.
     /// </summary>
     public virtual Uri? BaseAddress { get; set; }
@@ -34,4 +39,26 @@ public class AtcRestClientOptions
     /// for one call with <see cref="StreamReadOptions.MaxRecordLength"/>.
     /// </remarks>
     public virtual int MaxStreamRecordLength { get; set; } = DefaultMaxStreamRecordLength;
-}
+
+    /// <summary>
+    /// Gets or sets the most of an error response body that is read, in bytes. Defaults to 1 MiB.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An error body is read into memory as text. Where the response is not buffered by <c>HttpClient</c> - a
+    /// streamed or downloaded operation sent with <c>HttpCompletionOption.ResponseHeadersRead</c> - nothing else
+    /// limits it, so a peer that answers an error with an endless body would otherwise take the process down.
+    /// </para>
+    /// <para>
+    /// A longer body is cut, not refused: the caller is handling an error and needs the status code. The text of
+    /// the response is then the first part of the body, cut at a character boundary, and it is not deserialized to
+    /// the type registered for the status code - a cut document is no document. The rest of the body is not read.
+    /// A success body is the caller's data and is not limited by this.
+    /// </para>
+    /// <para>
+    /// Like <see cref="MaxStreamRecordLength"/>, the limit is one per service collection. <c>int.MaxValue</c>
+    /// switches it off.
+    /// </para>
+    /// </remarks>
+    public virtual int MaxErrorContentLength { get; set; } = DefaultMaxErrorContentLength;
+}

@@ -4,11 +4,13 @@ internal class HttpMessageFactory : IHttpMessageFactory
 {
     private readonly IContractSerializer serializer;
     private readonly int maxStreamRecordLength;
+    private readonly int maxErrorContentLength;
 
     public HttpMessageFactory(IContractSerializer serializer)
     {
         this.serializer = serializer;
         maxStreamRecordLength = AtcRestClientOptions.DefaultMaxStreamRecordLength;
+        maxErrorContentLength = AtcRestClientOptions.DefaultMaxErrorContentLength;
     }
 
     public HttpMessageFactory(
@@ -17,6 +19,7 @@ internal class HttpMessageFactory : IHttpMessageFactory
     {
         this.serializer = serializer;
         maxStreamRecordLength = options.Value.MaxStreamRecordLength;
+        maxErrorContentLength = options.Value.MaxErrorContentLength;
     }
 
     public IMessageRequestBuilder FromTemplate(string pathTemplate)
@@ -28,5 +31,6 @@ internal class HttpMessageFactory : IHttpMessageFactory
         => new MessageResponseBuilder(
             response,
             serializer,
-            maxStreamRecordLength);
+            maxStreamRecordLength,
+            maxErrorContentLength);
 }

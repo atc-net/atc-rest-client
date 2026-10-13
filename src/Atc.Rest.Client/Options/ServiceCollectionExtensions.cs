@@ -97,12 +97,18 @@ public static class ServiceCollectionExtensions
 
             httpClientBuilder?.Invoke(clientBuilder);
 
-            // The message factory is shared by all clients, so the limit is one per service collection.
+            // The message factory is shared by all clients, so a limit is one per service collection.
             // A client that leaves it at the default does not reset the limit another client has set.
             var maxStreamRecordLength = options.MaxStreamRecordLength;
             if (maxStreamRecordLength != AtcRestClientOptions.DefaultMaxStreamRecordLength)
             {
                 services.Configure<AtcRestClientOptions>(o => o.MaxStreamRecordLength = maxStreamRecordLength);
+            }
+
+            var maxErrorContentLength = options.MaxErrorContentLength;
+            if (maxErrorContentLength != AtcRestClientOptions.DefaultMaxErrorContentLength)
+            {
+                services.Configure<AtcRestClientOptions>(o => o.MaxErrorContentLength = maxErrorContentLength);
             }
 
             return services.AddAtcRestClientCore(contractSerializer);
