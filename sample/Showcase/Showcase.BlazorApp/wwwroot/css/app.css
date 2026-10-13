@@ -318,6 +318,14 @@ select:disabled {
     border-bottom: 1px solid var(--line);
 }
 
+.log .tag {
+    grid-column: 1 / -1;
+    color: var(--up);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
 .log .at {
     color: var(--muted);
 }

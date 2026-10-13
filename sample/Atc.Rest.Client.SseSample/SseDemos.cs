@@ -26,6 +26,7 @@ public sealed class SseDemos
         await UseAResultClassAsync(cancellationToken).ConfigureAwait(false);
         await StopEarlyAsync(cancellationToken).ConfigureAwait(false);
         await RefuseARecordThatIsTooLongAsync(cancellationToken).ConfigureAwait(false);
+        await ResumeAfterTheLastEventAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static void WriteTitle(string title)
@@ -199,6 +200,63 @@ public sealed class SseDemos
         catch (InvalidDataException ex)
         {
             Console.WriteLine($"   InvalidDataException: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The server cuts the connection after three of six prices. Every event has an id, and the response has the
+    /// last one that was read - so the caller connects again with it as Last-Event-ID, and the server continues
+    /// after it. The library does not reconnect by itself: when and how often is the caller's to decide. How long
+    /// to wait is what the server asked for with retry:, which OnEvent hands out.
+    /// </summary>
+    private async Task ResumeAfterTheLastEventAsync(
+        CancellationToken cancellationToken)
+    {
+        WriteTitle("7. A stream that is cut off is continued after the last id");
+
+        string? lastEventId = null;
+        var retry = TimeSpan.FromSeconds(3);
+        var options = new StreamReadOptions { OnEvent = x => retry = x.Retry ?? retry };
+        var clock = Stopwatch.StartNew();
+
+        while (true)
+        {
+            var requestBuilder = messageFactory
+                .FromTemplate("/prices")
+                .WithQueryParameter("count", 6)
+                .WithQueryParameter("noise", false)
+                .WithQueryParameter("dropAfter", 3);
+
+            if (!string.IsNullOrEmpty(lastEventId))
+            {
+                requestBuilder.WithHeaderParameter("Last-Event-ID", lastEventId);
+            }
+
+            try
+            {
+                var httpResponse = await SendAsync(requestBuilder, cancellationToken).ConfigureAwait(false);
+                using var response = await messageFactory
+                    .FromResponse(httpResponse)
+                    .BuildStreamingEndpointResponseAsync<PriceTick>(StreamFraming.ServerSentEvents, options, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await foreach (var tick in response.Content!.ConfigureAwait(false))
+                {
+                    WriteTick(clock, tick);
+
+                    // Where to continue, should the connection be lost after this item
+                    lastEventId = response.LastEventId ?? lastEventId;
+                }
+
+                break;
+            }
+            catch (Exception ex) when (ex is IOException or HttpRequestException)
+            {
+                Console.WriteLine($"   {ex.GetType().Name}: the connection was lost after id {lastEventId}.");
+                Console.WriteLine($"   Again in {retry.TotalMilliseconds} ms, with Last-Event-ID: {lastEventId}");
+
+                await Task.Delay(retry, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 

@@ -24,8 +24,9 @@
 
         <button type="button" class="primary" @onclick="StartAsync" disabled="@isStreaming">Start</button>
         <button type="button" @onclick="Stop" disabled="@(!isStreaming)">Stop</button>
+        <button type="button" @onclick="DropAsync" disabled="@(!isLive)" title="The server cuts the connection, as a network that fails would">Drop connection</button>
 
-        <p class="status @(isStreaming ? "is-live" : string.Empty)" role="status">
+        <p class="status @(isLive ? "is-live" : string.Empty)" role="status">
             <span class="dot" aria-hidden="true"></span>
             @status
         </p>
@@ -61,12 +62,31 @@
             <dt>Content-Type</dt>
             <dd>@(contentType ?? "–")</dd>
         </div>
+        <div>
+            <dt>LastEventId</dt>
+            <dd>@(lastEventId ?? "–")</dd>
+        </div>
+        <div>
+            <dt>Event</dt>
+            <dd>@(eventName ?? "–")</dd>
+        </div>
+        <div>
+            <dt>Retry</dt>
+            <dd>@(retry is null ? "–" : $"{Format((decimal)retry.Value.TotalSeconds)} s")</dd>
+        </div>
+        <div>
+            <dt>Reconnects</dt>
+            <dd>@reconnects</dd>
+        </div>
     </dl>
 
     <div class="split">
         <div>
             <h3>Arrivals</h3>
-            <p class="hint">Time since the stream opened. The gaps are the server's pace: nothing is held back.</p>
+            <p class="hint">
+                Time since the stream opened. The gaps are the server's pace: nothing is held back. After a dropped
+                connection the numbers go on without a gap - server-sent events are resumed after the last id.
+            </p>
             <ol class="log" reversed>
                 @foreach (var entry in log)
                 {
@@ -75,6 +95,10 @@
                         <span>#@entry.Tick.Sequence</span>
                         <span>@entry.Tick.Symbol</span>
                         <span class="num">@Format(entry.Tick.Price)</span>
+                        @if (entry.IsResumed)
+                        {
+                            <span class="tag">resumed</span>
+                        }
                     </li>
                 }
             </ol>
@@ -93,6 +117,26 @@ await foreach (var tick in result.Content!)
 {
     Show(tick);
 }</code></pre>
+
+            @if (framing == StreamFraming.ServerSentEvents)
+            {
+                <p class="hint">
+                    An event has an id, and the result has the last one read. When the connection is lost, the page
+                    waits as long as the server asked for and calls again with that id; the server continues after it.
+                </p>
+                <pre><code>// While reading: where to continue
+lastEventId = result.LastEventId;
+
+// When calling again
+requestBuilder.WithHeaderParameter("Last-Event-ID", lastEventId);</code></pre>
+            }
+            else
+            {
+                <p class="hint">
+                    This framing has no ids, so a dropped connection cannot be resumed: the read fails. Only
+                    server-sent events can be continued after the last event.
+                </p>
+            }
         </div>
     </div>
 </section>

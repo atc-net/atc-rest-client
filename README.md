@@ -930,7 +930,8 @@ What you get:
 
 **See it:** [`sample/Showcase`](sample/Showcase) is a Blazor WebAssembly app that runs the library in the browser - a
 live price ticker read from one HTTP response that never ends, in any of the five
-[stream formats](#-supported-stream-formats), plus a failed call and an event past the limit:
+[stream formats](#-supported-stream-formats), a connection that is dropped and
+[resumed after the last event](#resuming-an-event-stream), plus a failed call and an event past the limit:
 
 ```bash
 # The app alone, at http://localhost:5199
@@ -965,6 +966,12 @@ dotnet run --project sample/Atc.Rest.Client.SseSample
    StatusCode:         503 ServiceUnavailable
    ErrorContentObject: Prices are unavailable - The exchange is closed.
    retry-after:        30 s
+
+== 7. A stream that is cut off is continued after the last id
+   +  618 ms  #3 ATC 100.75
+   IOException: the connection was lost after id 3.
+   Again in 500 ms, with Last-Event-ID: 3
+   + 1447 ms  #4 ATC 101.00
 ```
 
 #### Resuming an Event Stream
