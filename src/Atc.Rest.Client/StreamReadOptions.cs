@@ -23,4 +23,16 @@ public class StreamReadOptions
     /// Used by <see cref="StreamFraming.ServerSentEvents"/> only.
     /// </remarks>
     public IReadOnlyCollection<string>? ItemEventNames { get; set; }
+
+    /// <summary>
+    /// Gets or sets what is called for every server-sent event that is yielded as an item, before it is yielded:
+    /// with the id of the last event read, the name of the event and the retry time the server last asked for.
+    /// </summary>
+    /// <remarks>
+    /// It is not called for an event that is read past - a heartbeat, a control frame, an event without data -
+    /// though the <c>id:</c> and <c>retry:</c> of such an event count for the items after it. It is called on the
+    /// thread that enumerates the stream, and an exception it throws fails the enumeration with that exception.
+    /// Used by <see cref="StreamFraming.ServerSentEvents"/> only.
+    /// </remarks>
+    public Action<ServerSentEventInfo>? OnEvent { get; set; }
 }

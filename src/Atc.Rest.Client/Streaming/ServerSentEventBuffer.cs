@@ -3,7 +3,8 @@ namespace Atc.Rest.Client.Streaming;
 /// <summary>
 /// The server-sent event being read: its name and its data, taken from the lines of the event as the HTML standard
 /// describes. The lines of one event are limited in length together, so an event of many short lines is refused as
-/// well as one long line.
+/// well as one long line. The id and the retry time are of the stream and not of one event: they stay until the
+/// server sends another.
 /// </summary>
 internal sealed class ServerSentEventBuffer
 {
@@ -11,6 +12,8 @@ internal sealed class ServerSentEventBuffer
 
     private static readonly byte[] DataField = "data"u8.ToArray();
     private static readonly byte[] EventField = "event"u8.ToArray();
+    private static readonly byte[] IdField = "id"u8.ToArray();
+    private static readonly byte[] RetryField = "retry"u8.ToArray();
 
     private readonly int maxLength;
     private readonly string description;
@@ -27,6 +30,23 @@ internal sealed class ServerSentEventBuffer
         this.description = description;
         data = new RecordBuffer(maxLength, description);
     }
+
+    /// <summary>
+    /// Gets the name of the event, or <see langword="null"/> for the unnamed event.
+    /// </summary>
+    public string? EventName
+        => string.IsNullOrEmpty(eventName) ? null : eventName;
+
+    /// <summary>
+    /// Gets the last id sent: <see langword="null"/> when there is none yet, and empty once an id without a value
+    /// has reset it.
+    /// </summary>
+    public string? LastEventId { get; private set; }
+
+    /// <summary>
+    /// Gets the retry time last sent, or <see langword="null"/> when there is none yet.
+    /// </summary>
+    public TimeSpan? Retry { get; private set; }
 
     /// <summary>
     /// Takes one line of the event: a field name, a colon and the value, of which one leading space is dropped.
@@ -71,6 +91,18 @@ internal sealed class ServerSentEventBuffer
         {
             eventName = Encoding.UTF8.GetString(value.Array!, value.Offset, value.Count);
         }
+        else if (name.SequenceEqual(IdField))
+        {
+            // An id with a NUL is ignored by the standard
+            if (value.AsSpan().IndexOf((byte)0) < 0)
+            {
+                LastEventId = Encoding.UTF8.GetString(value.Array!, value.Offset, value.Count);
+            }
+        }
+        else if (name.SequenceEqual(RetryField) && TryParseMilliseconds(value.AsSpan(), out var milliseconds))
+        {
+            Retry = TimeSpan.FromMilliseconds(milliseconds);
+        }
     }
 
     /// <summary>
@@ -95,7 +127,8 @@ internal sealed class ServerSentEventBuffer
         => data.ToArray();
 
     /// <summary>
-    /// Forgets the event at the blank line that ends it - its name too, also when the event had no data.
+    /// Forgets the event at the blank line that ends it - its name too, also when the event had no data. The id and
+    /// the retry time stay.
     /// </summary>
     public void Reset()
     {
@@ -103,5 +136,36 @@ internal sealed class ServerSentEventBuffer
         eventName = null;
         hasData = false;
         length = 0;
+    }
+
+    // A retry time is ASCII digits only, by the standard; anything else - and a number no client could wait for -
+    // is ignored.
+    private static bool TryParseMilliseconds(
+        ReadOnlySpan<byte> value,
+        out int milliseconds)
+    {
+        milliseconds = 0;
+        if (value.IsEmpty)
+        {
+            return false;
+        }
+
+        long number = 0;
+        foreach (var digit in value)
+        {
+            if (digit is < (byte)'0' or > (byte)'9')
+            {
+                return false;
+            }
+
+            number = (number * 10) + (digit - '0');
+            if (number > int.MaxValue)
+            {
+                return false;
+            }
+        }
+
+        milliseconds = (int)number;
+        return true;
     }
 }

@@ -114,11 +114,15 @@ internal static class StreamRecordReaders
     // The item event is the unnamed one (which the standard also calls "message") and the events named in
     // itemEventNames; such an event must be an item. An event with another name - a heartbeat, a control frame - is
     // read past without being deserialized, and so is an event without data.
+    // The id is taken at the blank line that ends an event - of an event that is no item as well - so an event the
+    // stream ends in leaves it as it was. onEvent is called for an item only, once it is deserialized.
     public static async IAsyncEnumerable<T?> ReadServerSentEventsAsync<T>(
         Stream stream,
         IContractSerializer serializer,
         int maxRecordLength,
         IReadOnlyCollection<string>? itemEventNames,
+        Action<ServerSentEventInfo>? onEvent,
+        ServerSentEventState state,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var reader = new Utf8LineReader(stream, maxRecordLength, ServerSentEventDescription, carriageReturnEndsLine: true);
@@ -136,12 +140,26 @@ internal static class StreamRecordReaders
                 ? serverSentEvent.GetData()
                 : null;
 
-            serverSentEvent.Reset();
+            var eventName = serverSentEvent.EventName;
 
-            if (json is not null)
+            serverSentEvent.Reset();
+            state.LastEventId = serverSentEvent.LastEventId;
+
+            if (json is null)
             {
-                yield return serializer.Deserialize<T>(json);
+                continue;
             }
+
+            var item = serializer.Deserialize<T>(json);
+
+            onEvent?.Invoke(new ServerSentEventInfo
+            {
+                LastEventId = serverSentEvent.LastEventId,
+                EventName = eventName,
+                Retry = serverSentEvent.Retry,
+            });
+
+            yield return item;
         }
     }
 
