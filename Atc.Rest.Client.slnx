@@ -1,5 +1,16 @@
 <Solution>
-  <Project Path="sample/Atc.Rest.Client.AotSample/Atc.Rest.Client.AotSample.csproj" />
-  <Project Path="src/Atc.Rest.Client/Atc.Rest.Client.csproj" />
-  <Project Path="test/Atc.Rest.Client.Tests/Atc.Rest.Client.Tests.csproj" />
+  <Folder Name="/Docs/">
+    <File Path="README.md" />
+    <File Path="CHANGELOG.md" />
+  </Folder>
+  <Folder Name="/sample/">
+    <Project Path="sample/Atc.Rest.Client.AotSample/Atc.Rest.Client.AotSample.csproj" />
+    <Project Path="sample/Atc.Rest.Client.SseSample/Atc.Rest.Client.SseSample.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Atc.Rest.Client/Atc.Rest.Client.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Atc.Rest.Client.Tests/Atc.Rest.Client.Tests.csproj" />
+  </Folder>
 </Solution>

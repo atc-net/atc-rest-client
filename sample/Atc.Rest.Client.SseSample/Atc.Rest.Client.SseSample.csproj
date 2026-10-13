@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Server-sent events with Atc.Rest.Client: a small server on a loopback port and a client that reads it.
+      dotnet run (in this folder)
+    The server is ASP.NET Core only so the sample is one command; the library does not depend on it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Atc.Rest.Client\Atc.Rest.Client.csproj" />
+  </ItemGroup>
+
+</Project>
