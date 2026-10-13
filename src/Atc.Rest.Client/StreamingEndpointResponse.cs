@@ -159,6 +159,9 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>
     /// when that item was yielded, and it is also set by an event that is no item (a heartbeat with an id).
     /// <see langword="null"/> when no event with an id has been read and for a stream that is not server-sent
     /// events; empty when the server has reset the id, in which case no header is to be sent.
+    /// It is <see langword="null"/> also when the response was not built by this library's reader - with a public
+    /// constructor, around a reader of the caller's own. <see cref="ServerSentEventReader.Read{T}"/> builds a
+    /// response that has it from a stream and a deserializer.
     /// </remarks>
     public string? LastEventId => eventState?.LastEventId;
 

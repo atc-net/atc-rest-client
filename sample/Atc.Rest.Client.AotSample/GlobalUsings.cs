@@ -3,6 +3,7 @@ global using System.Runtime.Serialization;
 global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
+global using System.Text.Json.Serialization.Metadata;
 global using Atc.Rest.Client;
 global using Atc.Rest.Client.AotSample;
 global using Atc.Rest.Client.AotSample.Contracts;

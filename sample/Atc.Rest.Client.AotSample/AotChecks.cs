@@ -55,6 +55,7 @@ public sealed class AotChecks
             ("Response headers are found in any casing", CheckResponseHeaderCasingAsync),
             ("A default error response is typed, or without a type", CheckDefaultErrorResponseAsync),
             ("Server-sent events hand out the id, the name and the retry time", CheckServerSentEventInfoAsync),
+            ("Server-sent events read with a deserializer of the caller's own keep the last id", CheckServerSentEventReaderAsync),
         };
 
         var failures = 0;
@@ -462,6 +463,34 @@ public sealed class AotChecks
         Expect(events.Count, 2);
         Expect(events[0], new ServerSentEventInfo { LastEventId = "1", Retry = TimeSpan.FromMilliseconds(1500) });
         Expect(events[1], new ServerSentEventInfo { LastEventId = "2", EventName = "order", Retry = TimeSpan.FromMilliseconds(1500) });
+    }
+
+    private static async Task CheckServerSentEventReaderAsync()
+    {
+        // A client with JSON options of its own, as a generated one has - not the contract serializer of the library
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = SampleJsonContext.Default };
+        var orderTypeInfo = (JsonTypeInfo<Order>)options.GetTypeInfo(typeof(Order));
+
+        using var response = CreateResponse(
+            HttpStatusCode.OK,
+            "text/event-stream",
+            $"id: 1\ndata: {OrderJson}\n\ndata: {OrderJson}\n\nid: 3\ndata: {OrderJson}\n\n");
+        var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+
+        using var result = new OrderStreamResult(
+            ServerSentEventReader.Read(response, stream, json => JsonSerializer.Deserialize(json, orderTypeInfo)));
+
+        var ids = new List<string?>();
+        await foreach (var order in result.Content!.ConfigureAwait(false))
+        {
+            Expect(order?.Title, "Desk");
+            ids.Add(result.LastEventId);
+        }
+
+        // An event without an id leaves the last one as it was
+        Expect(string.Join(",", ids), "1,1,3");
+        Expect(result.LastEventId, "3");
+        Expect(string.Join(",", result.Headers["X-Rate-Limit"]), "5");
     }
 
     private async Task CheckResponseHeaderCasingAsync()
