@@ -972,6 +972,10 @@ dotnet run --project sample/Atc.Rest.Client.SseSample
    IOException: the connection was lost after id 3.
    Again in 500 ms, with Last-Event-ID: 3
    + 1447 ms  #4 ATC 101.00
+
+== 8. A deserializer of your own, and still the last id
+   +  308 ms  #2 ATC 100.50
+              LastEventId: 2
 ```
 
 #### Resuming an Event Stream
@@ -1050,6 +1054,11 @@ failures the caller has to see.
   `EventName` is `null` for the unnamed event. `Retry` is the time the server last asked a client to wait before it
   connects again (`retry:` in milliseconds; a value that is not all digits, or is more than `int.MaxValue`, is ignored). An exception thrown by
   `OnEvent` fails the enumeration with that exception.
+- **A client with a deserializer of its own** - one that does not go through `IMessageResponseBuilder` - gets the
+  same reader with `ServerSentEventReader.Read(response, stream, json => ..., options)`; a response made with a
+  public constructor of `StreamingEndpointResponse<T>` around another reader has no `LastEventId` (`null`). That
+  reader does not see `AtcRestClientOptions`: a limit other than the default is passed as
+  `StreamReadOptions.MaxRecordLength`.
 
 > ⚠️ **Not supported yet:** handing the events that are no items - a heartbeat, a control frame such as
 > `event: error` - to the caller.

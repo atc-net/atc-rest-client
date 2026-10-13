@@ -413,7 +413,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         {
             StreamFraming.JsonLines => StreamRecordReaders.ReadJsonLinesAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
             StreamFraming.JsonSequence => StreamRecordReaders.ReadJsonSequenceAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
-            StreamFraming.ServerSentEvents => StreamRecordReaders.ReadServerSentEventsAsync<T>(stream, serializer, maxRecordLength, options?.ItemEventNames, options?.OnEvent, eventState ?? new ServerSentEventState(), cancellationToken),
+            StreamFraming.ServerSentEvents => StreamRecordReaders.ReadServerSentEventsAsync(stream, json => serializer.Deserialize<T>(json), maxRecordLength, options?.ItemEventNames, options?.OnEvent, eventState ?? new ServerSentEventState(), cancellationToken),
             StreamFraming.MultipartMixed => StreamRecordReaders.ReadMultipartMixedAsync<T>(stream, boundary, serializer, maxRecordLength, cancellationToken),
             _ => StreamRecordReaders.ReadJsonArrayAsync<T>(stream, serializer, maxRecordLength, cancellationToken),
         };
@@ -454,7 +454,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             ? contentDisposition?.FileName?.Trim('"')
             : contentDisposition!.FileNameStar;
 
-    private static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(
+    internal static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(
         HttpResponseMessage responseMessage)
     {
         var headers = responseMessage.Headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.OrdinalIgnoreCase);

@@ -27,6 +27,7 @@ public sealed class SseDemos
         await StopEarlyAsync(cancellationToken).ConfigureAwait(false);
         await RefuseARecordThatIsTooLongAsync(cancellationToken).ConfigureAwait(false);
         await ResumeAfterTheLastEventAsync(cancellationToken).ConfigureAwait(false);
+        await ReadWithADeserializerOfYourOwnAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static void WriteTitle(string title)
@@ -257,6 +258,35 @@ public sealed class SseDemos
 
                 await Task.Delay(retry, cancellationToken).ConfigureAwait(false);
             }
+        }
+    }
+
+    /// <summary>
+    /// A client that does not read through the response builder - it has the stream and a deserializer of its own,
+    /// as a generated client has - gets the same reader from <see cref="ServerSentEventReader"/>. The response it
+    /// returns has the last id too, which one made with a constructor around another reader never has.
+    /// </summary>
+    private async Task ReadWithADeserializerOfYourOwnAsync(
+        CancellationToken cancellationToken)
+    {
+        WriteTitle("8. A deserializer of your own, and still the last id");
+
+        var httpResponse = await GetAsync("/prices", count: 3, noise: true, cancellationToken).ConfigureAwait(false);
+        var stream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+        // The streaming response owns the HTTP response, as the one of the response builder does
+        using var response = ServerSentEventReader.Read(
+            httpResponse,
+            stream,
+            json => JsonSerializer.Deserialize(json, SampleJsonContext.Default.PriceTick),
+            options: null,
+            cancellationToken);
+
+        var clock = Stopwatch.StartNew();
+        await foreach (var tick in response.Content!.ConfigureAwait(false))
+        {
+            WriteTick(clock, tick);
+            Console.WriteLine($"              LastEventId: {response.LastEventId}");
         }
     }
 
