@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/atc-net/atc-rest-client/compare/v2.4.0...v2.5.0) (2026-10-13)
+
+
+### New features
+
+* **builder:** register a default error response without a type ([9a6775a](https://github.com/atc-net/atc-rest-client/commit/9a6775af5c1a62be809261312e40457e496fff81))
+* **streaming:** hand out the id, name and retry of server-sent events ([a8dda51](https://github.com/atc-net/atc-rest-client/commit/a8dda51b3c802449aeccd240f5c7c4e253b9b0e0))
+
 ## [2.4.0](https://github.com/atc-net/atc-rest-client/compare/v2.3.0...v2.4.0) (2026-10-13)
 
 
