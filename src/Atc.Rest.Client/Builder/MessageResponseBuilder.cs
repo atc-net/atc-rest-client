@@ -15,15 +15,18 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private readonly Dictionary<HttpStatusCode, (ContentSerializerDelegate Serializer, Type TargetType)> responseSerializers;
     private readonly Dictionary<HttpStatusCode, bool> responseCodes;
     private readonly int maxStreamRecordLength;
+    private readonly int maxErrorContentLength;
 
     public MessageResponseBuilder(
         HttpResponseMessage? response,
         IContractSerializer serializer,
-        int maxStreamRecordLength = AtcRestClientOptions.DefaultMaxStreamRecordLength)
+        int maxStreamRecordLength = AtcRestClientOptions.DefaultMaxStreamRecordLength,
+        int maxErrorContentLength = AtcRestClientOptions.DefaultMaxErrorContentLength)
     {
         this.response = response;
         this.serializer = serializer;
         this.maxStreamRecordLength = maxStreamRecordLength;
+        this.maxErrorContentLength = maxErrorContentLength;
         responseSerializers = [];
         responseCodes = [];
     }
@@ -65,13 +68,11 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         if (!IsSuccessStatus(response) ||
             UseReadAsStringFromContentDependingOnContentType(response.Content.Headers.ContentType))
         {
-            var content = await response
-                .Content
-                .ReadAsStringAsync(cancellationToken)
-                .ConfigureAwait(false);
+            var (content, isTruncated) = await ReadTextAsync(response, cancellationToken).ConfigureAwait(false);
 
+            // An error body that was cut at the limit is no document to deserialize
             object? contentResponse = content;
-            var serializerInfo = GetSerializer(response.StatusCode);
+            var serializerInfo = isTruncated ? null : GetSerializer(response.StatusCode);
             if (serializerInfo is not null)
             {
                 try
@@ -432,12 +433,12 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpResponseMessage responseMessage,
         CancellationToken cancellationToken)
     {
-        var errorContent = await responseMessage
-            .Content
-            .ReadAsStringAsync(cancellationToken)
+        var (errorContent, isTruncated) = await ErrorContentReader
+            .ReadAsync(responseMessage.Content, ErrorContentReader.Validate(maxErrorContentLength), cancellationToken)
             .ConfigureAwait(false);
 
-        var serializerInfo = GetSerializer(responseMessage.StatusCode);
+        // An error body that was cut at the limit is no document to deserialize
+        var serializerInfo = isTruncated ? null : GetSerializer(responseMessage.StatusCode);
         if (serializerInfo is null)
         {
             return (errorContent, null);
@@ -452,6 +453,26 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             // The raw text stays available in ErrorContent.
             return (errorContent, null);
         }
+    }
+
+    // A success body is the caller's data and is read whole; an error body is read up to the limit.
+    private async Task<(string Text, bool IsTruncated)> ReadTextAsync(
+        HttpResponseMessage responseMessage,
+        CancellationToken cancellationToken)
+    {
+        if (!IsSuccessStatus(responseMessage))
+        {
+            return await ErrorContentReader
+                .ReadAsync(responseMessage.Content, ErrorContentReader.Validate(maxErrorContentLength), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var text = await responseMessage
+            .Content
+            .ReadAsStringAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return (text, false);
     }
 
     private bool IsSuccessStatus(HttpResponseMessage responseMessage)
