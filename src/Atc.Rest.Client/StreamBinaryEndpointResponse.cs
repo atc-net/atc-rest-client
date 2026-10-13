@@ -34,7 +34,7 @@ public class StreamBinaryEndpointResponse : IStreamBinaryEndpointResponse
             contentLength,
             errorContent,
             errorContentObject: null,
-            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal))
+            new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase))
     {
     }
 

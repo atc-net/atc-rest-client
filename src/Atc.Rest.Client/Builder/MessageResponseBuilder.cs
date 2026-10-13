@@ -8,7 +8,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             HttpStatusCode.InternalServerError,
             string.Empty,
             contentObject: null,
-            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal));
+            new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase));
 
     private readonly HttpResponseMessage? response;
     private readonly IContractSerializer serializer;
@@ -303,7 +303,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private static IReadOnlyDictionary<string, IEnumerable<string>> GetHeaders(
         HttpResponseMessage responseMessage)
     {
-        var headers = responseMessage.Headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.Ordinal);
+        var headers = responseMessage.Headers.ToDictionary(h => h.Key, h => h.Value, StringComparer.OrdinalIgnoreCase);
 
         if (responseMessage.Content?.Headers is null)
         {
