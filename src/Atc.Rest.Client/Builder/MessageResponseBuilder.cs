@@ -143,7 +143,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         if (!response.IsSuccessStatusCode)
         {
-            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response).ConfigureAwait(false);
+            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
 
             return new BinaryEndpointResponse(
                 isSuccess: false,
@@ -194,7 +194,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         if (!response.IsSuccessStatusCode)
         {
-            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response).ConfigureAwait(false);
+            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
 
             return new StreamBinaryEndpointResponse(
                 isSuccess: false,
@@ -256,17 +256,16 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
         if (!response.IsSuccessStatusCode)
         {
-            var errorContent = await response
-                .Content
-                .ReadAsStringAsync(cancellationToken)
-                .ConfigureAwait(false);
+            var (errorContent, errorContentObject) = await ReadErrorContentAsync(response, cancellationToken).ConfigureAwait(false);
 
             return new StreamingEndpointResponse<T>(
                 isSuccess: false,
                 response.StatusCode,
                 content: null,
                 errorContent,
-                httpResponse: response);
+                httpResponse: response,
+                errorContentObject,
+                GetHeaders(response));
         }
 
         var stream = await response
@@ -281,7 +280,32 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             response.StatusCode,
             content,
             errorContent: null,
-            httpResponse: response);
+            httpResponse: response,
+            errorContentObject: null,
+            GetHeaders(response));
+    }
+
+    public async Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>
+    {
+        if (factory is null)
+        {
+            throw new ArgumentNullException(nameof(factory));
+        }
+
+        var streamingResponse = await BuildStreamingEndpointResponseAsync<T>(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            return factory(streamingResponse);
+        }
+        catch
+        {
+            streamingResponse.Dispose();
+            throw;
+        }
     }
 
     private static bool UseReadAsStringFromContentDependingOnContentType(
@@ -320,11 +344,12 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
     [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "IContractSerializer is pluggable and may throw any exception; an undeserializable error body must not fail the call.")]
     private async Task<(string ErrorContent, object? ErrorContentObject)> ReadErrorContentAsync(
-        HttpResponseMessage responseMessage)
+        HttpResponseMessage responseMessage,
+        CancellationToken cancellationToken)
     {
         var errorContent = await responseMessage
             .Content
-            .ReadAsStringAsync()
+            .ReadAsStringAsync(cancellationToken)
             .ConfigureAwait(false);
 
         var serializerInfo = GetSerializer(responseMessage.StatusCode);

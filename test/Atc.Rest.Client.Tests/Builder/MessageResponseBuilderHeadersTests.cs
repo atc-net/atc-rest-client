@@ -11,6 +11,8 @@ public sealed class MessageResponseBuilderHeadersTests
         "typed-success-error",
         "binary",
         "stream-binary",
+        "streaming",
+        "streaming-factory",
     };
 
     public static TheoryData<string, HttpStatusCode> ResponseKindsAndStatusCodes
@@ -192,6 +194,19 @@ public sealed class MessageResponseBuilderHeadersTests
                 using (var streamBinary = await sut.BuildStreamBinaryResponseAsync(CancellationToken.None))
                 {
                     return streamBinary.Headers;
+                }
+
+            case "streaming":
+                using (var streaming = await sut.BuildStreamingEndpointResponseAsync<SuccessResponse>())
+                {
+                    return streaming.Headers;
+                }
+
+            case "streaming-factory":
+                using (var streaming = await sut.BuildStreamingEndpointResponseAsync<SuccessResponse, DerivedStreamingEndpointResponse<SuccessResponse>>(
+                    x => new DerivedStreamingEndpointResponse<SuccessResponse>(x)))
+                {
+                    return streaming.Headers;
                 }
 
             default:
