@@ -1,0 +1,15 @@
+global using System.Diagnostics;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Globalization;
+global using System.Net;
+global using Atc.Rest.Client;
+global using Atc.Rest.Client.Builder;
+global using Atc.Rest.Client.Options;
+global using Microsoft.AspNetCore.Components;
+global using Microsoft.AspNetCore.Components.Web;
+global using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+global using Microsoft.AspNetCore.Components.WebAssembly.Http;
+global using Showcase.BlazorApp;
+global using Showcase.BlazorApp.Models;
+global using Showcase.BlazorApp.Services;
+global using Showcase.Contracts;

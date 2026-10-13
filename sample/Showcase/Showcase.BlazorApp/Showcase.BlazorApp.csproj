@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    The Blazor WebAssembly app of the showcase: Atc.Rest.Client reading streamed responses in the browser.
+    It is served by Showcase.Api - run that project.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Atc.Rest.Client\Atc.Rest.Client.csproj" />
+    <ProjectReference Include="..\Showcase.Contracts\Showcase.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

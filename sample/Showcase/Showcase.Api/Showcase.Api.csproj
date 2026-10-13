@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    The showcase of streamed responses with Atc.Rest.Client: this API streams prices and serves the Blazor app
+    that reads them, so one command runs it all.
+      dotnet run (in this folder), then open http://localhost:5199
+    Or run Showcase.Aspire to get the Aspire dashboard with it.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.12" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Showcase.BlazorApp\Showcase.BlazorApp.csproj" />
+    <ProjectReference Include="..\Showcase.Contracts\Showcase.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
