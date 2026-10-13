@@ -128,6 +128,24 @@ public interface IMessageResponseBuilder
     IMessageResponseBuilder AddDefaultErrorResponse<TResponseContent>();
 
     /// <summary>
+    /// Registers every error response without a registration of its own as an error without a type: the body is
+    /// read as text and not deserialized.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The lookup is as for <see cref="AddDefaultErrorResponse{TResponseContent}"/>, and the response is what
+    /// <see cref="AddErrorResponse(HttpStatusCode)"/> gives for that status: the text of the body, and no object.
+    /// Use it when the body is in a format the serializer does not read - XML - and the caller reads the text itself.
+    /// </para>
+    /// <para>
+    /// There is one default: of this one, <see cref="AddDefaultErrorResponse{TResponseContent}"/> and
+    /// <see cref="AddDefaultErrorTextResponse"/>, the one registered last applies.
+    /// </para>
+    /// </remarks>
+    /// <returns>The <see cref="IMessageResponseBuilder"/>.</returns>
+    IMessageResponseBuilder AddDefaultErrorResponse();
+
+    /// <summary>
     /// Registers that the body of every error response without a registration of its own is plain text, returned
     /// verbatim as a <see cref="string"/>.
     /// </summary>
