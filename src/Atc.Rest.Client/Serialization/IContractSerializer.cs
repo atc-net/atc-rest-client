@@ -51,6 +51,13 @@ public interface IContractSerializer
     /// <summary>
     /// Deserializes a stream as an async enumerable sequence of items.
     /// </summary>
+    /// <remarks>
+    /// The stream is expected to hold one JSON array whose elements are the items. The response builder limits the
+    /// length of one element of that array (<c>AtcRestClientOptions.MaxStreamRecordLength</c>) in front of this
+    /// method, and it counts an element as what stands directly in the root array. An implementation that reads its
+    /// items from somewhere else in the document - a wrapper object around the array - has the whole document
+    /// counted as one element.
+    /// </remarks>
     /// <typeparam name="T">The type of items to deserialize.</typeparam>
     /// <param name="stream">The stream containing JSON array data.</param>
     /// <param name="cancellationToken">The cancellation token.</param>

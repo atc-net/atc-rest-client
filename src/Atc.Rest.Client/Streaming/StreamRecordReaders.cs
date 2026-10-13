@@ -13,14 +13,22 @@ internal static class StreamRecordReaders
     private const string ServerSentEventDescription = "An event of the server-sent events stream";
 
     // A JSON array (application/json), read by the contract serializer. One element is limited in length as one
-    // record of the other framings is.
+    // record of the other framings is. A body without content - empty, or whitespace only, as a 204 or a gateway's
+    // empty 200 has it - is no items, as in the other framings; the serializer would refuse it as no JSON at all.
     public static async IAsyncEnumerable<T?> ReadJsonArrayAsync<T>(
         Stream stream,
         IContractSerializer serializer,
         int maxRecordLength,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using var elements = new JsonArrayElementLimitStream(stream, maxRecordLength);
+        var start = await ReadToContentAsync(stream, cancellationToken).ConfigureAwait(false);
+        if (start is null)
+        {
+            yield break;
+        }
+
+        using var content = new PrefixedStream(start, stream);
+        using var elements = new JsonArrayElementLimitStream(content, maxRecordLength);
 
         await foreach (var item in serializer.DeserializeAsyncEnumerable<T>(elements, cancellationToken).ConfigureAwait(false))
         {
@@ -202,6 +210,31 @@ internal static class StreamRecordReaders
         if (json.HasContent)
         {
             yield return serializer.Deserialize<T>(part.ToArray());
+        }
+    }
+
+    // Reads up to the first byte that is no whitespace, and returns what was read from that byte on - or null when
+    // the stream ends before there is one.
+    private static async Task<byte[]?> ReadToContentAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[ReadBufferSize];
+        while (true)
+        {
+            var read = await stream.ReadChunkAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+            {
+                return null;
+            }
+
+            for (var i = 0; i < read; i++)
+            {
+                if (buffer[i] is not ((byte)' ' or (byte)'\t' or (byte)'\r' or LineFeed))
+                {
+                    return buffer.AsSpan(i, read - i).ToArray();
+                }
+            }
         }
     }
 
