@@ -29,12 +29,21 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [🌊 Streaming Responses (IAsyncEnumerable)](#-streaming-responses-iasyncenumerable)
       - [Option 1: Simple Streaming (Basic Usage)](#option-1-simple-streaming-basic-usage)
       - [Option 2: Managed Lifecycle Streaming (Recommended) ✨](#option-2-managed-lifecycle-streaming-recommended-)
+      - [Typed Errors and Headers of a Streamed Response](#typed-errors-and-headers-of-a-streamed-response)
+      - [A Result Class for a Streamed Response](#a-result-class-for-a-streamed-response)
+    - [🧱 Supported Stream Formats](#-supported-stream-formats)
+      - [On the Wire](#on-the-wire)
+      - [Rules of the Readers](#rules-of-the-readers)
+      - [The Limit on One Record](#the-limit-on-one-record)
+    - [📡 Server-Sent Events](#-server-sent-events)
     - [📋 Handling Responses](#-handling-responses)
       - [Success and Error Response Handling](#success-and-error-response-handling)
       - [Custom Response Processing](#custom-response-processing)
       - [Plain Text Responses](#plain-text-responses)
       - [Error Response Deserialization Resilience](#error-response-deserialization-resilience)
       - [Error Bodies with Non-Text Media Types](#error-bodies-with-non-text-media-types)
+      - [The Limit on an Error Body](#the-limit-on-an-error-body)
+      - [Response Headers](#response-headers)
   - [💎 Best Practices](#-best-practices)
     - [Choosing Between Overloads](#choosing-between-overloads)
     - [Multiple Client Registration](#multiple-client-registration)
@@ -70,6 +79,8 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
 - 💾 **Binary Responses**: Handle file downloads with byte[] or Stream responses
 - 📝 **Plain Text Responses**: First-class `text/plain` handling that bypasses JSON deserialization
 - 🌊 **Streaming Support**: IAsyncEnumerable streaming for large datasets with proper lifecycle management
+- 📡 **Server-Sent Events**: Read a `text/event-stream` as typed items, one by one as they arrive - heartbeats skipped, typed errors and headers included
+- 🧱 **Five Stream Formats**: JSON array, JSON Lines / NDJSON, JSON text sequence, server-sent events and multipart/mixed - one call, one `StreamFraming` value, with a limit on one record
 - ⏱️ **HTTP Completion Options**: Control response buffering for streaming scenarios
 
 ## 🚀 Getting Started
@@ -618,6 +629,343 @@ else
 > - ✅ Status code information - check `IsSuccess` and `StatusCode`
 > - ✅ Avoids premature disposal - no risk of disposing the response before enumeration completes
 
+#### Typed Errors and Headers of a Streamed Response
+
+A streamed response has the same typed error and the same headers as any other response. Register the error type for
+the status code, and read it from `ErrorContentObject`:
+
+```csharp
+using var streamingResponse = await messageFactory
+    .FromResponse(response)
+    .AddErrorResponse<ProblemDetails>(HttpStatusCode.NotFound)
+    .BuildStreamingEndpointResponseAsync<DataItem>(cancellationToken);
+
+if (!streamingResponse.IsSuccess)
+{
+    if (streamingResponse.ErrorContentObject is ProblemDetails problem)
+    {
+        Console.WriteLine($"❌ {problem.Title}: {problem.Detail}");
+    }
+    else
+    {
+        // No type registered for the status code, an empty body, or a body that is not the registered type
+        // (an HTML error page from a proxy): the text is still there
+        Console.WriteLine($"❌ {streamingResponse.StatusCode}: {streamingResponse.ErrorContent}");
+    }
+
+    if (streamingResponse.Headers.TryGetValue("Retry-After", out var retryAfter))
+    {
+        Console.WriteLine($"Retry after {string.Join(",", retryAfter)} seconds");
+    }
+}
+```
+
+- `IsSuccess` follows the HTTP status (2xx), as for the binary responses.
+- `ErrorContentObject` is the error body deserialized to the type registered for the status code
+  (`AddErrorResponse<T>`), or the text itself for `AddErrorTextResponse`. An error body that is empty or cannot be
+  deserialized never throws: the object is `null` and `ErrorContent` has the text.
+- `Headers` holds the response headers and the content headers, for a success as well as for an error.
+
+#### A Result Class for a Streamed Response
+
+`BuildStreamingEndpointResponseAsync<T, TResult>(factory)` builds a class of your own that derives from
+`StreamingEndpointResponse<T>` - the streaming counterpart of `BuildResponseAsync(factory)`:
+
+```csharp
+public sealed class ListItemsResult : StreamingEndpointResponse<DataItem>
+{
+    public ListItemsResult(StreamingEndpointResponse<DataItem> response)
+        : base(response)
+    {
+    }
+
+    public bool IsNotFound => StatusCode == HttpStatusCode.NotFound;
+
+    public ProblemDetails NotFoundContent
+        => IsNotFound && ErrorContentObject is ProblemDetails result
+            ? result
+            : throw InvalidContentAccessException(HttpStatusCode.NotFound, nameof(NotFoundContent));
+}
+
+using var result = await messageFactory
+    .FromResponse(response)
+    .AddErrorResponse<ProblemDetails>(HttpStatusCode.NotFound)
+    .BuildStreamingEndpointResponseAsync<DataItem, ListItemsResult>(x => new ListItemsResult(x), cancellationToken);
+```
+
+The protected copy constructor **moves** the HTTP response to the new instance: disposing the result disposes it, and
+the instance handed to the factory no longer does. Dispose the result, not the source.
+
+### 🧱 Supported Stream Formats
+
+An API can stream its items in several formats. The library reads five, all through the same call and all as an
+`IAsyncEnumerable<T>` - only the `StreamFraming` value differs:
+
+| Format | Media type | `StreamFraming` |
+|---|---|---|
+| JSON array | `application/json` | `JsonArray` (the default) |
+| JSON Lines / NDJSON | `application/jsonl`, `application/x-ndjson` | `JsonLines` |
+| JSON text sequence (RFC 7464) | `application/json-seq` | `JsonSequence` |
+| Server-sent events | `text/event-stream` | `ServerSentEvents` |
+| Multipart | `multipart/mixed` | `MultipartMixed` |
+
+```csharp
+using var streamingResponse = await messageFactory
+    .FromResponse(response)
+    .BuildStreamingEndpointResponseAsync<DataItem>(StreamFraming.JsonLines, cancellationToken);
+
+await foreach (var item in streamingResponse.Content!)
+{
+    // The same loop for every format
+}
+```
+
+- Name the format the API specification declares. It is **not** guessed from the `Content-Type` of the response - an
+  error page or a proxy can change that.
+- Without a `StreamFraming`, `BuildStreamingEndpointResponseAsync<T>()` reads a JSON array, as it always has.
+- Every format has the factory overload for a result class of your own:
+  `BuildStreamingEndpointResponseAsync<T, TResult>(factory, framing, cancellationToken)`.
+- Typed errors, headers and the limit on one record are the same for all five.
+
+To see all five running, pick the format in the dropdown of the [showcase](#-server-sent-events) (`sample/Showcase`).
+
+#### On the Wire
+
+What the server sends for two items, `{"id":1}` and `{"id":2}`, in each format:
+
+**JSON array** (`application/json`) - one array; its elements are the items:
+
+```text
+[{"id":1},{"id":2}]
+```
+
+**JSON Lines / NDJSON** (`application/jsonl`, `application/x-ndjson`) - one JSON value per line:
+
+```text
+{"id":1}
+{"id":2}
+```
+
+**JSON text sequence** (`application/json-seq`) - each record starts with the record separator (`0x1E`, shown as `␞`)
+and ends with a line feed:
+
+```text
+␞{"id":1}
+␞{"id":2}
+```
+
+**Server-sent events** (`text/event-stream`) - the JSON is the `data:` of an event, and a blank line ends the event:
+
+```text
+: keep-alive
+
+id: 1
+data: {"id":1}
+
+event: ping
+data: ping
+
+id: 2
+data: {"id":2}
+
+```
+
+**Multipart** (`multipart/mixed; boundary=item`) - one JSON value per part, split on the boundary of the
+`Content-Type`:
+
+```text
+--item
+Content-Type: application/json
+
+{"id":1}
+--item
+Content-Type: application/json
+
+{"id":2}
+--item--
+```
+
+#### Rules of the Readers
+
+What holds for all of them:
+
+- An item is yielded as soon as its record is complete. Nothing is read ahead of it.
+- A successful response without content - a `204`, or a `200` whose body is empty or whitespace only - yields no
+  items in every format.
+- A JSON `null` record yields `null`.
+- A record that is not JSON for the item type throws the serializer's exception from the enumeration
+  (`MoveNextAsync`), not from the builder.
+- UTF-8 only; a UTF-8 byte order mark at the start of a JSON Lines or multipart stream is skipped.
+- If the response cannot be built (no multipart boundary, a cancelled read), the `HttpResponseMessage` is disposed
+  before the exception leaves the builder.
+
+And per format:
+
+- **JSON Lines**: an empty or whitespace-only line is skipped, `\r\n` is accepted, and a last line without a line feed
+  is still a record.
+- **JSON text sequence**: a record is yielded at the line feed that ends it, not at the next record separator - a
+  server that fails after a record never sends one. A record may be pretty-printed (line feeds inside it). What is
+  left at the end of the stream without a line feed is read as a record too, so a record that was cut off throws the
+  serializer's exception.
+- **Server-sent events**: comments, `id:` and `retry:` are read past, and several `data:` lines of an event are joined
+  with a line feed. An event without data is no item. The unnamed event (or one named `message`) is the item event and
+  must be an item. An event with any other name - a heartbeat, a control frame - is read past without being
+  deserialized, unless its name is listed in `StreamReadOptions.ItemEventNames`.
+- **Multipart**: the boundary comes from the `Content-Type` (quoted or not); a response without one throws an
+  `InvalidDataException` from the builder. The preamble and a part's own headers are read past. A part is yielded as
+  soon as its body is complete JSON, not at the next boundary, and reading ends at the closing boundary.
+
+#### The Limit on One Record
+
+A peer that never ends a record - never sends the line feed, never closes an array element - would make a reader
+buffer until the process is out of memory. So one record is limited in length: one line, one record, one event, one
+part or one array element. Past the limit the enumeration throws an `InvalidDataException` that names the limit,
+before the record has been buffered. The items before it are still yielded.
+
+The default is **16 MiB**. To change it for the application:
+
+```csharp
+services.Configure<AtcRestClientOptions>(o => o.MaxStreamRecordLength = 64 * 1024 * 1024);
+```
+
+or for one call:
+
+```csharp
+await responseBuilder.BuildStreamingEndpointResponseAsync<DataItem>(
+    StreamFraming.JsonLines,
+    new StreamReadOptions { MaxRecordLength = 1024 * 1024 },
+    cancellationToken);
+```
+
+To switch the limit off, set it to `int.MaxValue`. A value of zero or less is an `ArgumentOutOfRangeException`.
+
+> ⚠️ **One limit per service collection, not per named client.** `IHttpMessageFactory`, which reads the option, is
+> shared by all clients. `AddAtcRestClient(name, options)` applies `options.MaxStreamRecordLength` when it is not the
+> default, so when several clients set different values, the last one registered applies to all of them. Use
+> `StreamReadOptions` where one operation needs its own limit.
+
+What is counted, in bytes:
+
+| Framing | One record is |
+|---|---|
+| JSON Lines | A line, without its line ending |
+| JSON text sequence | What is between the record separator and the line feed that ends the record |
+| Server-sent events | The lines of an event up to the blank line that ends it (field names and comments included, line endings not) |
+| Multipart | The body of a part; a header line and a preamble line are limited to the same length each |
+| JSON array | An element, from its first byte to the comma or the closing bracket after it |
+
+For the JSON array the element is measured in front of the serializer, so the limit is exact - but the serializer
+reads ahead in its own buffer, and may refuse the stream before it has yielded an element that came just before the
+one that is too long. The same limit applies to `BuildStreamingResponseAsync<T>`.
+
+> ℹ️ **Upgrading from 2.3 or earlier:** a streamed JSON array had no limit before. An element larger than 16 MiB now
+> fails with an `InvalidDataException`; raise `MaxStreamRecordLength` if your API sends such elements. An error body
+> longer than 1 MiB is now cut at that length ([`MaxErrorContentLength`](#the-limit-on-an-error-body)). Of
+> server-sent events only the unnamed event is an item; an API whose items are named events lists the names in
+> `StreamReadOptions.ItemEventNames`.
+
+### 📡 Server-Sent Events
+
+A `text/event-stream` is read as an `IAsyncEnumerable<T>` of typed items. Each item is yielded as soon as its event
+has arrived - nothing waits for the stream to end:
+
+```csharp
+var requestBuilder = messageFactory.FromTemplate("/prices");
+
+// Without this, HttpClient reads the whole body before it returns - and a stream has no end to wait for
+requestBuilder.WithHttpCompletionOption(HttpCompletionOption.ResponseHeadersRead);
+
+using var request = requestBuilder.Build(HttpMethod.Get);
+var httpResponse = await client.SendAsync(request, requestBuilder.HttpCompletionOption, cancellationToken);
+
+// The streaming response owns the HTTP response from here on
+using var response = await messageFactory
+    .FromResponse(httpResponse)
+    .AddErrorResponse<ProblemDetails>(HttpStatusCode.ServiceUnavailable)
+    .BuildStreamingEndpointResponseAsync<PriceTick>(StreamFraming.ServerSentEvents, cancellationToken);
+
+if (response.IsSuccess)
+{
+    await foreach (var tick in response.Content!)
+    {
+        Console.WriteLine($"{tick?.Symbol} {tick?.Price}");
+    }
+}
+else if (response.ErrorContentObject is ProblemDetails problem)
+{
+    Console.WriteLine($"{problem.Title} - retry after {string.Join(",", response.Headers["Retry-After"])} s");
+}
+```
+
+What you get:
+
+- **Live items.** An item is yielded at the blank line that ends its event.
+- **Only the items.** The item event is the unnamed one (which the standard also calls `message`). Comments
+  (keep-alives), `id:` and `retry:` are read past, an event without data is no item, and an event with any other
+  name - a heartbeat such as `event: ping`, a closing `event: done` - is read past without being deserialized, even
+  when its data is JSON. An item event must be an item: data that is not JSON for `T` throws the serializer's
+  exception from the enumeration.
+- **Named item events when the API has them.** An API that sends its items as `event: order` names them:
+
+  ```csharp
+  await responseBuilder.BuildStreamingEndpointResponseAsync<Order>(
+      StreamFraming.ServerSentEvents,
+      new StreamReadOptions { ItemEventNames = ["order"] },
+      cancellationToken);
+  ```
+
+  The unnamed event stays an item as well. Event names are case-sensitive, as in the standard.
+- **A failed call is not a stream.** `IsSuccess` is false, `ErrorContentObject` is the error body as the type registered
+  for the status code, and `Headers` are there to read. See
+  [Typed Errors and Headers of a Streamed Response](#typed-errors-and-headers-of-a-streamed-response).
+- **Stop when you like.** Leave the `await foreach` and dispose the response: the connection is released and the
+  server sees the request aborted.
+- **No runaway events.** One event is limited in length, see [The Limit on One Record](#the-limit-on-one-record).
+- **Your JSON options.** The data is deserialized with the configured `IContractSerializer`, so naming policy,
+  converters and a source-generated `JsonSerializerContext` apply as everywhere else.
+
+**See it:** [`sample/Showcase`](sample/Showcase) is a Blazor WebAssembly app that runs the library in the browser - a
+live price ticker read from one HTTP response that never ends, in any of the five
+[stream formats](#-supported-stream-formats), plus a failed call and an event past the limit:
+
+```bash
+# The app alone, at http://localhost:5199
+dotnet run --project sample/Showcase/Showcase.Api
+
+# Or with the Aspire dashboard: logs and traces of the streamed requests
+dotnet run --project sample/Showcase/Showcase.Aspire
+```
+
+![The showcase: live prices read as server-sent events](images/showcase-live-streams.png)
+
+The HTTP code of the app is one file,
+[`PriceStreamClient.cs`](sample/Showcase/Showcase.BlazorApp/Services/PriceStreamClient.cs); what each framing looks
+like on the wire is in [`PriceEndpoints.cs`](sample/Showcase/Showcase.Api/PriceEndpoints.cs). In the browser, add
+`request.SetBrowserResponseStreamingEnabled(true)` so the body is read as a stream.
+
+**Try it in a terminal:** [`sample/Atc.Rest.Client.SseSample`](sample/Atc.Rest.Client.SseSample) hosts a small event
+stream on a loopback port and reads it, one demo per point above:
+
+```bash
+dotnet run --project sample/Atc.Rest.Client.SseSample
+```
+
+```text
+== 1. Items arrive as the server sends them
+   +    8 ms  #1 ATC 100.25
+   +  303 ms  #2 ATC 100.50
+   +  614 ms  #3 ATC 100.75
+
+== 3. A failed call has a typed error and headers
+   IsSuccess:          False
+   StatusCode:         503 ServiceUnavailable
+   ErrorContentObject: Prices are unavailable - The exchange is closed.
+   retry-after:        30 s
+```
+
+> ⚠️ **Not supported yet:** reconnecting a stream that ended (`Last-Event-ID`, `retry:`), and handing the event name
+> or id - or the events that are no items - to the caller.
+
 ### 📋 Handling Responses
 
 #### Success and Error Response Handling
@@ -727,6 +1075,39 @@ var result = await responseBuilder.BuildResponseAsync(x => x, cancellationToken)
 - The body is decoded by the `Content-Type` charset (e.g. `application/xml; charset=iso-8859-1`), or UTF-8 when none is given.
 - "Error" follows the builder's configuration: a status registered with `AddErrorResponse` counts as an error even if it is 2xx, and one registered with `AddSuccessResponse` counts as a success even if it is 4xx/5xx.
 
+#### The Limit on an Error Body
+
+An error body is read into memory as text. For a streamed or downloaded operation the response is sent with
+`HttpCompletionOption.ResponseHeadersRead`, so `HttpClient` does not buffer it and its own buffer limit does not
+apply: a misbehaving upstream that answers `502` with an endless body would otherwise take the process down.
+
+So an error body is read up to **1 MiB**. A longer one is cut, not refused - you are handling an error and need the
+status code:
+
+- The text (`Content`, `ErrorContent`) is the first part of the body, cut at a character boundary.
+- It is not deserialized to the type registered for the status code - a cut document is no document. Nothing
+  throws.
+- The rest of the body is not read.
+- A success body is your data and is not limited by this.
+
+```csharp
+services.Configure<AtcRestClientOptions>(o => o.MaxErrorContentLength = 64 * 1024);
+```
+
+`int.MaxValue` switches the limit off. Like `MaxStreamRecordLength`, it is one limit per service collection. The text
+is decoded with the charset of the `Content-Type` (UTF-8 without one); a charset that is not known falls back to
+UTF-8 instead of failing the call.
+
+#### Response Headers
+
+Every response type has `Headers`: the response headers and the content headers. HTTP header names are
+case-insensitive, and HTTP/2 and HTTP/3 send them in lower case, so a name is looked up without regard to casing:
+
+```csharp
+response.Headers.TryGetValue("ETag", out var etag);          // also found when it arrives as "etag"
+response.Headers.TryGetValue("x-rate-limit", out var limit); // also found as "X-Rate-Limit"
+```
+
 ## 💎 Best Practices
 
 ### Choosing Between Overloads
@@ -799,6 +1180,12 @@ public class AtcRestClientOptions
 {
     public virtual Uri? BaseAddress { get; set; }
     public virtual TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    // The longest record of a streamed response, in bytes (16 MiB). One per service collection.
+    public virtual int MaxStreamRecordLength { get; set; } = DefaultMaxStreamRecordLength;
+
+    // The most of an error response body that is read, in bytes (1 MiB). One per service collection.
+    public virtual int MaxErrorContentLength { get; set; } = DefaultMaxErrorContentLength;
 }
 ```
 
@@ -890,8 +1277,35 @@ public interface IMessageResponseBuilder
     // 🌊 Streaming support
     IAsyncEnumerable<T?> BuildStreamingResponseAsync<T>(CancellationToken cancellationToken = default);
     Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(CancellationToken cancellationToken = default);
+    Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>;
+
+    // 📡 Stream framings (JSON Lines, JSON text sequence, server-sent events, multipart/mixed)
+    Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        StreamFraming framing,
+        CancellationToken cancellationToken = default);
+    Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
+        StreamFraming framing,
+        StreamReadOptions? options,
+        CancellationToken cancellationToken = default);
+    Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        StreamFraming framing,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>;
+    Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        StreamFraming framing,
+        StreamReadOptions? options,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>;
 }
 ```
+
+> ℹ️ `IMessageResponseBuilder` is implemented by the library. A type of your own that implements it (a test double)
+> has to add a member whenever the interface gains one; `netstandard2.0` has no default interface members.
 
 ### Response Status Properties
 
@@ -1028,7 +1442,14 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>, IDisp
 
     public string? ErrorContent { get; }  // ❌ Error message if request failed
 
+    public object? ErrorContentObject { get; }  // ❌ The error deserialized to the type registered for the status code
+
+    public IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }  // Never null
+
     public void Dispose();  // 🧹 Disposes the underlying HttpResponseMessage
+
+    // Takes over the items, the error and the ownership of the HTTP response from another instance
+    protected StreamingEndpointResponse(StreamingEndpointResponse<T> response);
 
     protected InvalidOperationException InvalidContentAccessException(
         HttpStatusCode expectedStatusCode,
@@ -1039,7 +1460,7 @@ public class StreamingEndpointResponse<T> : IStreamingEndpointResponse<T>, IDisp
 > 💡 **Key Benefits:**
 >
 > - Manages `HttpResponseMessage` lifecycle automatically
-> - Provides `ErrorContent` when the request fails
+> - Provides `ErrorContent`, the typed `ErrorContentObject` and `Headers`
 > - Prevents premature disposal during enumeration
 > - Inheritable for custom response types
 
