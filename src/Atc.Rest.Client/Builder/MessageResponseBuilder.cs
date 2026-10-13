@@ -14,8 +14,10 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private readonly IContractSerializer serializer;
     private readonly Dictionary<HttpStatusCode, (ContentSerializerDelegate Serializer, Type TargetType)> responseSerializers;
     private readonly Dictionary<HttpStatusCode, bool> responseCodes;
+    private readonly Dictionary<HttpStatusCode, Dictionary<string, (ContentSerializerDelegate Serializer, Type TargetType)>> mediaTypeSerializers;
     private readonly int maxStreamRecordLength;
     private readonly int maxErrorContentLength;
+    private (ContentSerializerDelegate Serializer, Type TargetType)? defaultErrorSerializer;
 
     public MessageResponseBuilder(
         HttpResponseMessage? response,
@@ -29,9 +31,13 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         this.maxErrorContentLength = maxErrorContentLength;
         responseSerializers = [];
         responseCodes = [];
+        mediaTypeSerializers = [];
     }
 
     private delegate object? ContentSerializerDelegate(string content);
+
+    private static (ContentSerializerDelegate Serializer, Type TargetType) TextSerializer
+        => (content => string.IsNullOrWhiteSpace(content) ? null : content, typeof(string));
 
     public IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode)
         => AddEmptyResponse(statusCode, isSuccess: false);
@@ -40,12 +46,22 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode)
         => AddTypedResponse<TResponseContent>(statusCode, isSuccess: false);
 
+    public IMessageResponseBuilder AddErrorResponse<TResponseContent>(
+        HttpStatusCode statusCode,
+        string mediaType)
+        => AddTypedResponse<TResponseContent>(statusCode, mediaType, isSuccess: false);
+
     public IMessageResponseBuilder AddSuccessResponse(HttpStatusCode statusCode)
         => AddEmptyResponse(statusCode, isSuccess: true);
 
     public IMessageResponseBuilder AddSuccessResponse<TResponseContent>(
         HttpStatusCode statusCode)
         => AddTypedResponse<TResponseContent>(statusCode, isSuccess: true);
+
+    public IMessageResponseBuilder AddSuccessResponse<TResponseContent>(
+        HttpStatusCode statusCode,
+        string mediaType)
+        => AddTypedResponse<TResponseContent>(statusCode, mediaType, isSuccess: true);
 
     public IMessageResponseBuilder AddSuccessTextResponse(
         HttpStatusCode statusCode)
@@ -54,6 +70,18 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     public IMessageResponseBuilder AddErrorTextResponse(
         HttpStatusCode statusCode)
         => AddTextResponse(statusCode, isSuccess: false);
+
+    public IMessageResponseBuilder AddDefaultErrorResponse<TResponseContent>()
+    {
+        defaultErrorSerializer = CreateTypedSerializer<TResponseContent>();
+        return this;
+    }
+
+    public IMessageResponseBuilder AddDefaultErrorTextResponse()
+    {
+        defaultErrorSerializer = TextSerializer;
+        return this;
+    }
 
     public async Task<TResult> BuildResponseAsync<TResult>(
         Func<EndpointResponse, TResult> factory,
@@ -72,7 +100,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
             // An error body that was cut at the limit is no document to deserialize
             object? contentResponse = content;
-            var serializerInfo = isTruncated ? null : GetSerializer(response.StatusCode);
+            var serializerInfo = isTruncated ? null : GetSerializer(response);
             if (serializerInfo is not null)
             {
                 try
@@ -438,7 +466,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             .ConfigureAwait(false);
 
         // An error body that was cut at the limit is no document to deserialize
-        var serializerInfo = isTruncated ? null : GetSerializer(responseMessage.StatusCode);
+        var serializerInfo = isTruncated ? null : GetSerializer(responseMessage);
         if (serializerInfo is null)
         {
             return (errorContent, null);
@@ -480,11 +508,54 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
             ? isSuccess
             : responseMessage.IsSuccessStatusCode;
 
+    // The media type of a registration and of a response, without its parameters: "application/problem+json" of
+    // "application/problem+json; charset=utf-8". Null when there is none.
+    private static string? GetMediaTypeWithoutParameters(string? mediaType)
+    {
+        if (mediaType is null)
+        {
+            return null;
+        }
+
+        var parameters = mediaType.AsSpan().IndexOf(';');
+        var name = (parameters < 0 ? mediaType : mediaType.Substring(0, parameters)).Trim();
+
+        return name.Length == 0
+            ? null
+            : name;
+    }
+
+    // The registration for the response: the one for its status and media type, else the one for its status, else -
+    // for an error only - the default.
     private (ContentSerializerDelegate Serializer, Type TargetType)? GetSerializer(
-        HttpStatusCode statusCode)
-        => responseSerializers.TryGetValue(statusCode, out var deserializer)
-            ? deserializer
-            : null;
+        HttpResponseMessage responseMessage)
+    {
+        var statusCode = responseMessage.StatusCode;
+        var mediaType = GetMediaTypeWithoutParameters(responseMessage.Content?.Headers.ContentType?.MediaType);
+
+        if (mediaType is not null &&
+            mediaTypeSerializers.TryGetValue(statusCode, out var byMediaType) &&
+            byMediaType.TryGetValue(mediaType, out var forMediaType))
+        {
+            return forMediaType;
+        }
+
+        if (responseSerializers.TryGetValue(statusCode, out var forStatusCode))
+        {
+            return forStatusCode;
+        }
+
+        return IsSuccessStatus(responseMessage)
+            ? null
+            : defaultErrorSerializer;
+    }
+
+    private (ContentSerializerDelegate Serializer, Type TargetType) CreateTypedSerializer<T>()
+        => (
+            content => string.IsNullOrWhiteSpace(content)
+                ? null
+                : serializer.Deserialize<T>(content),
+            typeof(T));
 
     private IMessageResponseBuilder AddEmptyResponse(
         HttpStatusCode statusCode,
@@ -500,11 +571,27 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode,
         bool isSuccess)
     {
-        responseSerializers[statusCode] = (
-            content => string.IsNullOrWhiteSpace(content)
-                ? null
-                : serializer.Deserialize<T>(content),
-            typeof(T));
+        responseSerializers[statusCode] = CreateTypedSerializer<T>();
+        responseCodes[statusCode] = isSuccess;
+
+        return this;
+    }
+
+    private IMessageResponseBuilder AddTypedResponse<T>(
+        HttpStatusCode statusCode,
+        string mediaType,
+        bool isSuccess)
+    {
+        var name = GetMediaTypeWithoutParameters(mediaType)
+            ?? throw new ArgumentException("A media type is required, e.g. application/json.", nameof(mediaType));
+
+        if (!mediaTypeSerializers.TryGetValue(statusCode, out var byMediaType))
+        {
+            byMediaType = new Dictionary<string, (ContentSerializerDelegate Serializer, Type TargetType)>(StringComparer.OrdinalIgnoreCase);
+            mediaTypeSerializers[statusCode] = byMediaType;
+        }
+
+        byMediaType[name] = CreateTypedSerializer<T>();
         responseCodes[statusCode] = isSuccess;
 
         return this;
@@ -514,9 +601,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode,
         bool isSuccess)
     {
-        responseSerializers[statusCode] = (
-            content => string.IsNullOrWhiteSpace(content) ? null : content,
-            typeof(string));
+        responseSerializers[statusCode] = TextSerializer;
         responseCodes[statusCode] = isSuccess;
 
         return this;
