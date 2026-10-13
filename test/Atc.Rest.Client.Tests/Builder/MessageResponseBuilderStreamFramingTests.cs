@@ -27,6 +27,24 @@ public sealed class MessageResponseBuilderStreamFramingTests
         }
     }
 
+    public static TheoryData<StreamFraming, HttpStatusCode, string> FramingsAndBodiesWithoutContent
+    {
+        get
+        {
+            var data = new TheoryData<StreamFraming, HttpStatusCode, string>();
+            foreach (var framing in Enum.GetValues<StreamFraming>())
+            {
+                foreach (var statusCode in new[] { HttpStatusCode.OK, HttpStatusCode.NoContent })
+                {
+                    data.Add(framing, statusCode, string.Empty);
+                    data.Add(framing, statusCode, " \r\n \n\t");
+                }
+            }
+
+            return data;
+        }
+    }
+
     public static TheoryData<StreamFraming, int> FramingsAndLargestLimits
     {
         get
@@ -367,6 +385,136 @@ public sealed class MessageResponseBuilderStreamFramingTests
         // Act
         using var result = await sut.BuildStreamingEndpointResponseAsync<SuccessResponse>(framing);
         var items = await result.Content!.ToListAsync();
+
+        // Assert
+        items.Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(FramingsAndBodiesWithoutContent))]
+    public async Task SuccessWithoutContent_YieldsNoItems(
+        StreamFraming framing,
+        HttpStatusCode statusCode,
+        string body)
+    {
+        // Arrange
+        using var response = StreamWire.Response(framing, FeedStream.FromText(body), statusCode);
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamingEndpointResponseAsync<SuccessResponse>(framing);
+        var items = await result.Content!.ToListAsync();
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        items.Should().BeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Framings))]
+    public async Task SuccessWithoutContent_OverAConnectionThatJustCloses_YieldsNoItems(
+        StreamFraming framing)
+    {
+        // Arrange
+        await using var server = LoopbackServer.Start(
+            (response, _) => response.WriteHeadAsync(HttpStatusCode.OK, StreamWire.ContentType(framing)));
+
+        using var client = new HttpClient();
+        var httpResponse = await client.GetAsync(server.Uri, HttpCompletionOption.ResponseHeadersRead);
+        var sut = CreateSut(httpResponse);
+
+        // Act
+        using var result = await sut.BuildStreamingEndpointResponseAsync<SuccessResponse>(framing);
+        var items = await result.Content!.ToListAsync();
+
+        // Assert
+        items.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData(" \r\n [ ] \n")]
+    public async Task JsonArray_EmptyArray_YieldsNoItems(string body)
+    {
+        // Arrange
+        using var response = StreamWire.Response(StreamFraming.JsonArray, body);
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamingEndpointResponseAsync<int>(StreamFraming.JsonArray);
+        var items = await result.Content!.ToListAsync();
+
+        // Assert
+        items.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(" \r\n\t [1,2]")]
+    [InlineData("﻿[1,2]")]
+    [InlineData("﻿ \n[1,2]")]
+    public async Task JsonArray_AfterLeadingWhitespaceOrAByteOrderMark_IsRead(
+        string body)
+    {
+        // Arrange
+        using var response = StreamWire.Response(StreamFraming.JsonArray, body);
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamingEndpointResponseAsync<int>(StreamFraming.JsonArray);
+        var items = await result.Content!.ToListAsync();
+
+        // Assert
+        items.Should().Equal(1, 2);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("  {\"name\":\"a\"}")]
+    [InlineData("not json")]
+    public async Task JsonArray_ContentThatIsNoArray_ThrowsFromTheEnumeration(
+        string body)
+    {
+        // Arrange
+        using var response = StreamWire.Response(StreamFraming.JsonArray, body);
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamingEndpointResponseAsync<int>(StreamFraming.JsonArray);
+        var act = () => result.Content!.ToListAsync().AsTask();
+
+        // Assert
+        var exception = await act.Should().ThrowAsync<JsonException>();
+        exception.Which.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task JsonArray_ElementPastTheLimitAfterLeadingWhitespace_Throws()
+    {
+        // Arrange
+        using var response = StreamWire.Response(StreamFraming.JsonArray, " \n " + StreamWire.Document(StreamFraming.JsonArray, JsonStringOfLength(Limit + 1)));
+        var sut = CreateSut(response);
+
+        // Act
+        using var result = await sut.BuildStreamingEndpointResponseAsync<string>(StreamFraming.JsonArray);
+        var act = () => result.Content!.ToListAsync().AsTask();
+
+        // Assert
+        var exception = await act.Should().ThrowAsync<InvalidDataException>();
+        exception.WithMessage("*64 bytes*");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \r\n ")]
+    public async Task BuildStreamingResponseAsync_WithoutContent_YieldsNoItems(
+        string body)
+    {
+        // Arrange
+        using var response = StreamWire.Response(StreamFraming.JsonArray, FeedStream.FromText(body));
+        var sut = CreateSut(response);
+
+        // Act
+        var items = await sut.BuildStreamingResponseAsync<int>().ToListAsync();
 
         // Assert
         items.Should().BeEmpty();
