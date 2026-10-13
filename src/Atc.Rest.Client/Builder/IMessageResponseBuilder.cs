@@ -186,7 +186,14 @@ public interface IMessageResponseBuilder
     /// <item><description>Access to <see cref="StreamingEndpointResponse{T}.IsSuccess"/> status</description></item>
     /// <item><description>Access to <see cref="StreamingEndpointResponse{T}.StatusCode"/></description></item>
     /// <item><description>Access to <see cref="StreamingEndpointResponse{T}.ErrorContent"/> on failure</description></item>
+    /// <item><description>Access to <see cref="StreamingEndpointResponse{T}.ErrorContentObject"/>, the error deserialized to the type registered for the status code (e.g. <c>AddErrorResponse&lt;T&gt;</c>)</description></item>
+    /// <item><description>Access to <see cref="StreamingEndpointResponse{T}.Headers"/></description></item>
     /// </list>
+    /// </para>
+    /// <para>
+    /// <see cref="StreamingEndpointResponse{T}.IsSuccess"/> follows the HTTP status (2xx). An error body that is empty
+    /// or cannot be deserialized to the registered type does not throw: the object is <see langword="null"/> and
+    /// the text stays in <see cref="StreamingEndpointResponse{T}.ErrorContent"/>.
     /// </para>
     /// </remarks>
     /// <typeparam name="T">The type of items to deserialize from the stream.</typeparam>
@@ -194,4 +201,24 @@ public interface IMessageResponseBuilder
     /// <returns>A <see cref="StreamingEndpointResponse{T}"/> containing the streaming content and response metadata.</returns>
     Task<StreamingEndpointResponse<T>> BuildStreamingEndpointResponseAsync<T>(
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds a streaming endpoint response using a custom factory function, e.g. for a result class derived from
+    /// <see cref="StreamingEndpointResponse{T}"/>.
+    /// </summary>
+    /// <remarks>
+    /// The response is built as by <see cref="BuildStreamingEndpointResponseAsync{T}(CancellationToken)"/> and handed
+    /// to <paramref name="factory"/>. A result created with the copy constructor of
+    /// <see cref="StreamingEndpointResponse{T}"/> takes over the HTTP response; the caller disposes the result.
+    /// If the factory throws, the HTTP response is disposed.
+    /// </remarks>
+    /// <typeparam name="T">The type of items to deserialize from the stream.</typeparam>
+    /// <typeparam name="TResult">The type of result to create.</typeparam>
+    /// <param name="factory">A factory function that creates the result from the streaming endpoint response.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The result created by the factory function.</returns>
+    Task<TResult> BuildStreamingEndpointResponseAsync<T, TResult>(
+        Func<StreamingEndpointResponse<T>, TResult> factory,
+        CancellationToken cancellationToken = default)
+        where TResult : StreamingEndpointResponse<T>;
 }

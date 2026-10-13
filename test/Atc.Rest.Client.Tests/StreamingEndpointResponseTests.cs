@@ -47,6 +47,130 @@ public sealed class StreamingEndpointResponseTests
     }
 
     [Fact]
+    public void Constructor_WithoutHeaders_HasEmptyCaseInsensitiveHeadersAndNoErrorContentObject()
+    {
+        // Act
+        using var sut = new StreamingEndpointResponse<string>(
+            isSuccess: false,
+            HttpStatusCode.BadRequest,
+            content: null,
+            errorContent: "Bad Request Error",
+            httpResponse: null);
+
+        // Assert
+        sut.ErrorContentObject.Should().BeNull();
+        sut.Headers.Should().BeEmpty();
+        sut.Headers.Should().BeOfType<Dictionary<string, IEnumerable<string>>>()
+            .Which.Comparer.Should().BeSameAs(StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Constructor_WithErrorContentObjectAndHeaders_SetsThem()
+    {
+        // Arrange
+        var errorContentObject = new BadResponse { Error = "Bad Request Error" };
+        var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Retry-After"] = ["30"],
+        };
+
+        // Act
+        using var sut = new StreamingEndpointResponse<string>(
+            isSuccess: false,
+            HttpStatusCode.BadRequest,
+            content: null,
+            errorContent: "{\"error\":\"Bad Request Error\"}",
+            httpResponse: null,
+            errorContentObject,
+            headers);
+
+        // Assert
+        sut.ErrorContentObject.Should().BeSameAs(errorContentObject);
+        sut.Headers.Should().BeSameAs(headers);
+    }
+
+    [Fact]
+    public void Constructor_WithNullHeaders_HasEmptyHeaders()
+    {
+        // Act
+        using var sut = new StreamingEndpointResponse<string>(
+            isSuccess: false,
+            HttpStatusCode.BadRequest,
+            content: null,
+            errorContent: null,
+            httpResponse: null,
+            errorContentObject: null,
+            headers: null!);
+
+        // Assert
+        sut.Headers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CopyConstructor_CarriesEverythingOver()
+    {
+        // Arrange
+        var content = AsyncEnumerable.Empty<string>();
+        var errorContentObject = new BadResponse { Error = "Bad Request Error" };
+        var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Retry-After"] = ["30"],
+        };
+        using var source = new StreamingEndpointResponse<string>(
+            isSuccess: true,
+            HttpStatusCode.Accepted,
+            content,
+            errorContent: "text",
+            httpResponse: null,
+            errorContentObject,
+            headers);
+
+        // Act
+        using var sut = new DerivedStreamingEndpointResponse<string>(source);
+
+        // Assert
+        sut.IsSuccess.Should().BeTrue();
+        sut.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        sut.Content.Should().BeSameAs(content);
+        sut.ErrorContent.Should().Be("text");
+        sut.ErrorContentObject.Should().BeSameAs(errorContentObject);
+        sut.Headers.Should().BeSameAs(headers);
+    }
+
+    [Fact]
+    public void CopyConstructor_TakesOverTheHttpResponse()
+    {
+        // Arrange
+        using var httpResponse = new DisposeCountingHttpResponseMessage(HttpStatusCode.OK);
+        var source = new StreamingEndpointResponse<string>(
+            isSuccess: true,
+            HttpStatusCode.OK,
+            content: null,
+            errorContent: null,
+            httpResponse);
+
+        // Act
+        var sut = new DerivedStreamingEndpointResponse<string>(source);
+
+        // Assert
+        source.Dispose();
+        httpResponse.DisposeCount.Should().Be(0);
+
+        sut.Dispose();
+        httpResponse.DisposeCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void CopyConstructor_NullResponse_Throws()
+    {
+        // Act
+        var act = () => new DerivedStreamingEndpointResponse<string>(response: null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>().WithParameterName("response");
+    }
+
+    [Fact]
     public async Task Dispose_DisposesHttpResponse()
     {
         // Arrange

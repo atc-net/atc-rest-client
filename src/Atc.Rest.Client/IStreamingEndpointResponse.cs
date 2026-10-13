@@ -25,4 +25,15 @@ public interface IStreamingEndpointResponse<out T> : IDisposable
     /// Gets the error content if the request failed.
     /// </summary>
     string? ErrorContent { get; }
+
+    /// <summary>
+    /// Gets the object the error content was deserialized to, when the status code was registered with a type
+    /// (e.g. <c>AddErrorResponse&lt;TError&gt;(status)</c>); otherwise <see langword="null"/>.
+    /// </summary>
+    object? ErrorContentObject { get; }
+
+    /// <summary>
+    /// Gets the response headers (and content headers). Names are looked up without regard to casing.
+    /// </summary>
+    IReadOnlyDictionary<string, IEnumerable<string>> Headers { get; }
 }
