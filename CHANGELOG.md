@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.4.0](https://github.com/atc-net/atc-rest-client/compare/v2.3.0...v2.4.0) (2026-10-13)
+
+
+### New features
+
+* **builder:** add typed errors, headers and a result factory to streaming responses ([8b13361](https://github.com/atc-net/atc-rest-client/commit/8b133611a3c6ae348328af08394dd55fd84128fb))
+* **builder:** limit how much of an error response body is read ([074f2ea](https://github.com/atc-net/atc-rest-client/commit/074f2ea0d27a306ce404fbc62c789b6aabe47a1c))
+* **builder:** read JSON Lines, JSON sequence, server-sent events and multipart streams ([66a1e1e](https://github.com/atc-net/atc-rest-client/commit/66a1e1ef5dff97c3d44cc2845f1d5efff7184a93))
+* **builder:** register a default error response and a response per media type ([2c59972](https://github.com/atc-net/atc-rest-client/commit/2c59972cbe1bc5320012d237bb98e7582e15e98e))
+
+
+### Bug fixes
+
+* **builder:** look up response headers without regard to casing ([a7380ea](https://github.com/atc-net/atc-rest-client/commit/a7380ea343b3a845a627dc293d166a65166d2bfc))
+* **builder:** read a streamed JSON array response without content as no items ([1e3c540](https://github.com/atc-net/atc-rest-client/commit/1e3c540d4f0233ac9c3b53cb20309a758d9afa81))
+
 ## [2.3.0](https://github.com/atc-net/atc-rest-client/compare/v2.2.0...v2.3.0) (2026-10-10)
 
 
