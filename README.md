@@ -1059,7 +1059,11 @@ var result = await messageFactory
     .BuildResponseAsync(x => new GetOrderResult(x), cancellationToken);
 ```
 
-Use `AddDefaultErrorTextResponse()` when the default body is plain text.
+The default has the three kinds a status has: `AddDefaultErrorResponse<T>()` deserializes the body to a type,
+`AddDefaultErrorTextResponse()` gives a plain text body as a `string`, and `AddDefaultErrorResponse()` registers the
+error without a type - the body is kept as text and nothing is deserialized, as with `AddErrorResponse(statusCode)`.
+Use the last one for a body the serializer does not read, such as XML. There is one default; the one registered
+last applies.
 
 **Two bodies for one status, told apart by media type** - a `404` with the model of the API as `application/json`,
 and the problem details of the framework as `application/problem+json`:
@@ -1385,6 +1389,7 @@ All response types support both properties:
 | Type                                 | `IsSuccess` |
 |--------------------------------------|-------------|
 | `EndpointResponse`                   | ✅          |
+    IMessageResponseBuilder AddDefaultErrorResponse();
 | `EndpointResponse<TSuccess>`         | ✅          |
 | `EndpointResponse<TSuccess, TError>` | ✅          |
 | `BinaryEndpointResponse`             | ✅          |

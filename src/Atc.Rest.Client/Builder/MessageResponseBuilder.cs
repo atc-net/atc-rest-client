@@ -36,6 +36,9 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
 
     private delegate object? ContentSerializerDelegate(string content);
 
+    private static (ContentSerializerDelegate Serializer, Type TargetType) EmptySerializer
+        => (_ => null, typeof(object));
+
     private static (ContentSerializerDelegate Serializer, Type TargetType) TextSerializer
         => (content => string.IsNullOrWhiteSpace(content) ? null : content, typeof(string));
 
@@ -74,6 +77,12 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     public IMessageResponseBuilder AddDefaultErrorResponse<TResponseContent>()
     {
         defaultErrorSerializer = CreateTypedSerializer<TResponseContent>();
+        return this;
+    }
+
+    public IMessageResponseBuilder AddDefaultErrorResponse()
+    {
+        defaultErrorSerializer = EmptySerializer;
         return this;
     }
 
@@ -561,7 +570,7 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
         HttpStatusCode statusCode,
         bool isSuccess)
     {
-        responseSerializers[statusCode] = (_ => null, typeof(object));
+        responseSerializers[statusCode] = EmptySerializer;
         responseCodes[statusCode] = isSuccess;
 
         return this;
