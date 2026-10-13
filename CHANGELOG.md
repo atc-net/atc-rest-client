@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/atc-net/atc-rest-client/compare/v2.5.0...v2.6.0) (2026-10-13)
+
+
+### New features
+
+* **streaming:** read a server-sent events stream outside the builder with its last event id ([2ac4467](https://github.com/atc-net/atc-rest-client/commit/2ac446775150525bf9a994e86f032fc407122ae2))
+
 ## [2.5.0](https://github.com/atc-net/atc-rest-client/compare/v2.4.0...v2.5.0) (2026-10-13)
 
 
