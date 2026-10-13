@@ -33,7 +33,7 @@ public class BinaryEndpointResponse : IBinaryEndpointResponse
             contentLength,
             errorContent,
             errorContentObject: null,
-            new Dictionary<string, IEnumerable<string>>(StringComparer.Ordinal))
+            new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase))
     {
     }
 
