@@ -25,6 +25,7 @@ A lightweight and flexible REST client library for .NET, providing a clean abstr
     - [📝 URL-Encoded Form Body](#-url-encoded-form-body)
     - [📁 File Upload with IFileContent](#-file-upload-with-ifilecontent)
     - [📤 Binary Upload (Raw Stream)](#-binary-upload-raw-stream)
+    - [🧾 Streamed Request Body (JSON Lines)](#-streamed-request-body-json-lines)
     - [💾 File Download (Binary Response)](#-file-download-binary-response)
     - [🌊 Streaming Responses (IAsyncEnumerable)](#-streaming-responses-iasyncenumerable)
       - [Option 1: Simple Streaming (Basic Usage)](#option-1-simple-streaming-basic-usage)
@@ -496,6 +497,44 @@ using var request = requestBuilder.Build(HttpMethod.Post);
 >
 > A `Stream` passed to `WithBody` is sent the same way as `WithBinaryBody` (with the content type given to
 > `WithBody(stream, contentType)`, else `application/octet-stream`), not serialized.
+
+### 🧾 Streamed Request Body (JSON Lines)
+
+Send records as the caller makes them - one JSON value per line (JSON Lines), written and sent while the source still
+runs, with no length (chunked):
+
+```csharp
+async IAsyncEnumerable<PriceTick> ReadTicksAsync(
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
+{
+    await foreach (var line in File.ReadLinesAsync("prices.csv", cancellationToken))
+    {
+        yield return PriceTick.Parse(line);
+    }
+}
+
+var requestBuilder = messageFactory.FromTemplate("/api/prices/import");
+requestBuilder.WithStreamedBody(ReadTicksAsync(cancellationToken));
+
+using var request = requestBuilder.Build(HttpMethod.Post);
+using var response = await client.SendAsync(request, cancellationToken);
+```
+
+| Media type | On the wire |
+|---|---|
+| `application/jsonl` (the default), `application/x-ndjson`, `application/x-jsonlines` | the record, then a line feed |
+| `application/json-seq`, any `+json-seq` type (RFC 7464, RFC 8091) | a record separator (`0x1E`), the record, then a line feed |
+
+- Each record is serialized with the builder's `IContractSerializer`. A JSON Lines record is always one line, also from
+  an indenting serializer (a line break between JSON tokens is whitespace; one inside a string is escaped).
+- What is written is sent whenever the source makes the request wait, so a live source reaches the server record by
+  record, and a fast one in full buffers.
+- A `null` record is the line `null`; a source with no records sends an empty body.
+- Another media type throws `ArgumentException` at the call.
+
+> ⚠️ **Sent once:** the records are read while they are written, so the content cannot be sent again. A retry or a
+> redirect that sends it again throws `InvalidOperationException` instead of sending other records. Turn off the
+> retries of a resilience handler (`AddStandardResilienceHandler` retries every method by default) for such a request.
 
 ### 💾 File Download (Binary Response)
 
@@ -1137,7 +1176,9 @@ else
 > - Use `AddSuccessTextResponse` when the server returns a raw text body (e.g. `file contents`). The default JSON serializer would reject this since it's not a valid JSON literal.
 > - Use `AddSuccessResponse<string>` only when the server returns a JSON-encoded string (e.g. `"file contents"` with quotes).
 >
-> An empty or whitespace-only body yields a `null` `ContentObject`, matching the behavior of `AddSuccessResponse<T>`. Character encoding follows the `Content-Type` charset.
+> The body is kept as it came: an empty body is `""` and a whitespace-only body is that whitespace (a text answer
+> of nothing is still the text the API declared). A response registered without a body (`AddSuccessResponse(statusCode)`)
+> stays no content (`null`). Character encoding follows the `Content-Type` charset.
 
 #### The Default Response and Responses per Media Type
 
@@ -1360,6 +1401,7 @@ public interface IMessageRequestBuilder
 
     // Binary upload support (raw stream)
     IMessageRequestBuilder WithBinaryBody(Stream stream, string? contentType = null);
+    IMessageRequestBuilder WithStreamedBody<T>(IAsyncEnumerable<T> records, string contentType = "application/jsonl");
 
     // Multipart form data support
     IMessageRequestBuilder WithFile(Stream stream, string name, string fileName, string? contentType = null);
