@@ -20,7 +20,7 @@
   -->
   <ItemGroup Condition="'$(LibraryTargetFramework)' != ''">
     <ProjectReference Update="..\..\src\Atc.Rest.Client\Atc.Rest.Client.csproj" SetTargetFramework="TargetFramework=$(LibraryTargetFramework)" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.13" />
   </ItemGroup>
 
 </Project>
