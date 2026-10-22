@@ -121,6 +121,30 @@ public interface IMessageRequestBuilder
         string? contentType = null);
 
     /// <summary>
+    /// Adds a stream of records as the body of the request: JSON Lines (one JSON value per line) for
+    /// <c>application/jsonl</c>, <c>application/x-ndjson</c> and <c>application/x-jsonlines</c>; a JSON Text Sequence
+    /// (a record separator, the value and a line feed, RFC 7464) for <c>application/json-seq</c> and any
+    /// <c>+json-seq</c> type.
+    /// </summary>
+    /// <remarks>
+    /// Each record is serialized with the builder's <see cref="IContractSerializer"/> as the source yields it - a JSON
+    /// Lines record on one line, also from an indenting serializer - and sent with no length (chunked). What is written
+    /// is sent whenever the source makes the request wait, so a live source reaches the server record by record.
+    /// The content is sent once: a retry or a redirect that sends it again throws <see cref="InvalidOperationException"/>
+    /// rather than reading the source again, so turn off the retries of a resilience handler for such a request.
+    /// </remarks>
+    /// <typeparam name="T">The record.</typeparam>
+    /// <param name="records">The records to send.</param>
+    /// <param name="contentType">The media type: a JSON Lines or a JSON Text Sequence media type.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="records"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="contentType"/> is not a JSON Lines or a JSON Text
+    /// Sequence media type.</exception>
+    /// <returns>The <see cref="IMessageRequestBuilder"/>.</returns>
+    IMessageRequestBuilder WithStreamedBody<T>(
+        IAsyncEnumerable<T> records,
+        string contentType = "application/jsonl");
+
+    /// <summary>
     /// Builds a <see cref="HttpRequestMessage"/> with the added content.
     /// </summary>
     /// <param name="method">The <see cref="HttpMethod"/> to use in the request.</param>
