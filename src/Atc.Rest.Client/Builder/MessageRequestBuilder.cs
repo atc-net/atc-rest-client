@@ -14,6 +14,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
     private string contentMediaType = "application/json";
     private List<IFileContent>? contentFormFiles;
     private (Stream Stream, string ContentType)? binaryContent;
+    private Func<HttpContent>? streamedContent;
     private bool hasUrlEncodedForm;
 
     public MessageRequestBuilder(
@@ -59,6 +60,7 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         {
             if (content is not null ||
                 binaryContent.HasValue ||
+                streamedContent is not null ||
                 streamFiles.Count > 0 ||
                 formFields.Count > 0 ||
                 contentFormFiles is not null)
@@ -67,6 +69,11 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
             }
 
             return new FormUrlEncodedContent(urlEncodedFormFields);
+        }
+
+        if (streamedContent is not null)
+        {
+            return streamedContent();
         }
 
         if (content is not null)
@@ -241,6 +248,33 @@ internal class MessageRequestBuilder : IMessageRequestBuilder
         }
 
         binaryContent = (stream, contentType ?? "application/octet-stream");
+        return this;
+    }
+
+    public IMessageRequestBuilder WithStreamedBody<T>(
+        IAsyncEnumerable<T> records,
+        string contentType = "application/jsonl")
+    {
+        if (records is null)
+        {
+            throw new ArgumentNullException(nameof(records));
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            throw new ArgumentException($"'{nameof(contentType)}' cannot be null or whitespace", nameof(contentType));
+        }
+
+        var mediaType = MediaTypeHeaderValue.Parse(contentType).MediaType;
+        if (!StreamedRequestFraming.IsJsonLines(mediaType) &&
+            !StreamedRequestFraming.IsJsonSequence(mediaType))
+        {
+            throw new ArgumentException(
+                $"'{contentType}' is not a stream of records: use a JSON Lines media type (application/jsonl, application/x-ndjson, application/x-jsonlines) or a JSON Text Sequence media type (application/json-seq, +json-seq).",
+                nameof(contentType));
+        }
+
+        streamedContent = () => new StreamedRequestContent<T>(records, serializer, contentType);
         return this;
     }
 
