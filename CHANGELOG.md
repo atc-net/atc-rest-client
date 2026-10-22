@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.7.0](https://github.com/atc-net/atc-rest-client/compare/v2.6.0...v2.7.0) (2026-10-22)
+
+
+### New features
+
+* **builder:** send a stream of records as the request body - WithStreamedBody writes JSON Lines or a JSON Text Sequence record by record, chunked, flushed when the source waits, and refuses a second send ([36c31b8](https://github.com/atc-net/atc-rest-client/commit/36c31b88f78a44d817208b62a8c139f5d72ed8d1))
+
+
+### Upgrades
+
+* **deps:** bump the netstandard2.0 test reference to Microsoft.Bcl.AsyncInterfaces 10.0.13 ([93a5aa7](https://github.com/atc-net/atc-rest-client/commit/93a5aa70000f8c39d08c24cdd72751c9939fdc3b))
+* **deps:** the showcase sample on Microsoft.AspNetCore.Components.WebAssembly.Server 10.0.13 and Aspire 13.6.3 - the solution restore failed on NU1903 and NU1902 (MessagePack 2.5.302 through Aspire) ([f77cdbb](https://github.com/atc-net/atc-rest-client/commit/f77cdbbb0b763cff0f505d28c225d31e69534ecf))
+
+
+### Bug fixes
+
+* **response:** a declared text body that is empty or only whitespace is that text, not no content ([48f0d4f](https://github.com/atc-net/atc-rest-client/commit/48f0d4f34b2b5f08b0ab3e4b008ba538a1e757d7))
+
 ## [2.6.0](https://github.com/atc-net/atc-rest-client/compare/v2.5.0...v2.6.0) (2026-10-13)
 
 
