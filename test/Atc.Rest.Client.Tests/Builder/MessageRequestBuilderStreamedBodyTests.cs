@@ -233,27 +233,47 @@ public sealed class MessageRequestBuilderStreamedBodyTests
         FlushRecordingStream stream,
         params T[] records)
     {
+        // The source waits until the content flushes - the content only flushes when it sees the source waiting,
+        // so the length recorded here is the length flushed while the source waited, whatever thread resumes it
         foreach (var record in records)
         {
-            await Task.Yield();
+            await stream.WaitForFlushAsync();
             stream.FlushedLengthWhenRequested.Add(stream.Flushed);
             yield return record;
         }
 
-        await Task.Yield();
+        await stream.WaitForFlushAsync();
         stream.FlushedLengthWhenRequested.Add(stream.Flushed);
     }
 
     private sealed class FlushRecordingStream : MemoryStream
     {
+        private readonly SemaphoreSlim flushes = new(0);
+
         public List<long> FlushedLengthWhenRequested { get; } = [];
 
         public long Flushed { get; private set; }
 
-        public override Task FlushAsync(CancellationToken cancellationToken)
+        public override async Task FlushAsync(
+            CancellationToken cancellationToken)
         {
             Flushed = Length;
-            return base.FlushAsync(cancellationToken);
+            await base.FlushAsync(cancellationToken);
+            flushes.Release();
+        }
+
+        // A content that does not flush lets the source go on after the timeout, so the test fails rather than hangs
+        public Task<bool> WaitForFlushAsync()
+            => flushes.WaitAsync(TimeSpan.FromSeconds(5));
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                flushes.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }
