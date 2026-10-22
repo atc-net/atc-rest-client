@@ -812,6 +812,26 @@ public sealed class MessageResponseBuilderTests
         result.ContentObject.Should().Be(string.Empty);
     }
 
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessTextResponse_EmptyBodyWithoutContentType_IsTheEmptyText(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - an empty answer often comes without a Content-Type (a proxy, another server)
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent([]),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessTextResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.ContentObject.Should().Be(string.Empty);
+    }
+
     [Theory]
     [InlineData("  ")]
     [InlineData("\n")]
