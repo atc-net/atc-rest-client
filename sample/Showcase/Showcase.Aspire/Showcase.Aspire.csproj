@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.3">
 
   <!--
     The Aspire AppHost of the showcase: runs Showcase.Api (which serves the Blazor app) with the Aspire dashboard,
