@@ -791,10 +791,10 @@ public sealed class MessageResponseBuilderTests
     }
 
     [Theory, AutoNSubstituteData]
-    public async Task AddSuccessTextResponse_EmptyBody_ReturnsNullContentObject(
+    public async Task AddSuccessTextResponse_EmptyBody_IsTheEmptyText(
         CancellationToken cancellationToken)
     {
-        // Arrange - empty text body (mirror AddTypedResponse<T> null-for-whitespace semantics)
+        // Arrange - a declared text body that is empty is still the text the API answered
         using var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "text/plain"),
@@ -809,6 +809,71 @@ public sealed class MessageResponseBuilderTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.StatusCode.Should().Be(HttpStatusCode.OK);
+        result.ContentObject.Should().Be(string.Empty);
+    }
+
+    [Theory]
+    [InlineData("  ")]
+    [InlineData("\n")]
+    [InlineData("  \r\n")]
+    public async Task AddSuccessTextResponse_WhitespaceBody_IsKeptAsItIs(
+        string text)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(text, System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessTextResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, TestContext.Current.CancellationToken);
+
+        // Assert
+        result.ContentObject.Should().Be(text);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddErrorTextResponse_EmptyBody_IsTheEmptyText(
+        CancellationToken cancellationToken)
+    {
+        // Arrange
+        using var response = new HttpResponseMessage(HttpStatusCode.Conflict)
+        {
+            Content = new StringContent(string.Empty, System.Text.Encoding.UTF8, "text/plain"),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddErrorTextResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ContentObject.Should().Be(string.Empty);
+    }
+
+    [Theory, AutoNSubstituteData]
+    public async Task AddSuccessResponse_NoContent_EmptyBody_IsNoContent(
+        CancellationToken cancellationToken)
+    {
+        // Arrange - a response without a declared body stays no content
+        using var response = new HttpResponseMessage(HttpStatusCode.NoContent)
+        {
+            Content = new StringContent(string.Empty),
+        };
+
+        var sut = CreateSut(response);
+
+        // Act
+        var result = await sut.AddSuccessResponse(response.StatusCode)
+            .BuildResponseAsync(res => res, cancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
         result.ContentObject.Should().BeNull();
     }
 

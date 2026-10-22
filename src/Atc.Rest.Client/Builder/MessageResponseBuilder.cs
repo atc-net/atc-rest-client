@@ -39,8 +39,9 @@ internal class MessageResponseBuilder : IMessageResponseBuilder
     private static (ContentSerializerDelegate Serializer, Type TargetType) EmptySerializer
         => (_ => null, typeof(object));
 
+    // A declared text body is the text as it came - also when it is empty or only whitespace
     private static (ContentSerializerDelegate Serializer, Type TargetType) TextSerializer
-        => (content => string.IsNullOrWhiteSpace(content) ? null : content, typeof(string));
+        => (content => content, typeof(string));
 
     public IMessageResponseBuilder AddErrorResponse(HttpStatusCode statusCode)
         => AddEmptyResponse(statusCode, isSuccess: false);
